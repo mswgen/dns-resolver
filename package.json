@@ -1,6 +1,8 @@
 {
   "name": "dns-resolver",
-  "version": "1.0.6",
+  "productName": "DNS Resolver",
+  "companyName": "int-Team",
+  "version": "1.0.7",
   "description": "A simple DNS resolver app",
   "main": "main.js",
   "scripts": {
