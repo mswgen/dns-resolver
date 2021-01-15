@@ -3,7 +3,8 @@ module.exports = {
         {
             name: '@electron-forge/maker-dmg',
             config: {
-                name: 'DNS Resolver'
+                productName: 'DNS Resolver',
+                name: 'dns-resolver'
             }
         },
         {
