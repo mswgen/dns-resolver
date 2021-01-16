@@ -14,6 +14,13 @@ module.exports = {
                     productName: 'DNS Resolver'
                 }
             }
+        },
+        {
+            name: '@electron-forge/maker-squirrel',
+            config: {
+                productName: 'DNS Resolver',
+                noMsi: true
+            }
         }
     ]
 }
