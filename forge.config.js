@@ -7,6 +7,15 @@ module.exports = {
             }
         },
         {
+            name: '@electron-forge/maker-rpm',
+            config: {
+                options: {
+                    name: 'dns-resolver',
+                    productName: 'DNS Resolver'
+                }
+            }
+        },
+        {
             name: '@electron-forge/maker-deb',
             config: {
                 options: {

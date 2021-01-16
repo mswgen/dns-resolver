@@ -89,16 +89,16 @@ jobs:
         with:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           BRANCH: build
-          FOLDER: lnx/out/make
+          FOLDER: lnx
       - name: Deploy macOS Application
         uses: JamesIves/github-pages-deploy-action@3.7.1
         with:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           BRANCH: build
-          FOLDER: mac/out/make
+          FOLDER: mac
       - name: Deploy Windows Executable
         uses: JamesIves/github-pages-deploy-action@3.7.1
         with:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           BRANCH: build
-          FOLDER: win/out/make
+          FOLDER: win
