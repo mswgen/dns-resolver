@@ -4,20 +4,33 @@ module.exports = {
             name: '@electron-forge/maker-dmg'
         },
         {
-            name: '@electron-forge/maker-rpm'
+            name: '@electron-forge/maker-rpm',
+            config: {
+                options: {
+                    name: 'DNS Resolver',
+                    productName: 'DNS Resolver'
+                }
+            }
         },
         {
-            name: '@electron-forge/maker-deb'
+            name: '@electron-forge/maker-deb',
+            config: {
+                options: {
+                    name: 'DNS Resolver',
+                    productName: 'DNS Resolver'
+                }
+            }
         },
         {
             name: '@electron-forge/maker-squirrel',
             config: {
-                noMsi: true
+                noMsi: true,
+                name: 'DnsResolver'
             }
         }
     ],
     packagerConfig: {
-        executableName: 'dns-resolver',
+        executableName: 'DNS Resolver',
         name: 'DNS Resolver'
     }
 }
