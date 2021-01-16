@@ -26,7 +26,7 @@ module.exports = {
             config: {
                 noMsi: true,
                 name: 'dns-resolver',
-                exe: 'DNS Resolver'
+                exe: 'dns-resolver.exe'
             }
         }
     ],
