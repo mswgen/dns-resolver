@@ -1,6 +1,6 @@
 {
   "name": "dns-resolver",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A simple DNS resolver app",
   "main": "main.js",
   "scripts": {
@@ -19,6 +19,7 @@
   "devDependencies": {
     "electron": "^11.1.1",
     "axios": "^0.21.1",
-    "punycode": "^2.1.1"
+    "punycode": "^2.1.1",
+    "update-electron-app": "^2.0.1"
   }
 }
