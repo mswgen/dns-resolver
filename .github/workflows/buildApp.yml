@@ -24,11 +24,17 @@ jobs:
         run: sudo apt install rpm fakeroot dpkg
       - name: Build
         run: npm run make
-      - name: Upload Artifacts
+      - name: Upload Deb Artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: lnx
+          name: deb
           path: out/make/deb/x64
+      - name: Upload Rpm Artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: rpm
+          path: out/make/rpm/x64
+          
   buildMac:
     name: macOS Application(.dmg)
     runs-on: macos-latest
@@ -79,17 +85,28 @@ jobs:
         uses: actions/checkout@v2
         with:
           persist-credentials: false
-      - name: Download Linux Artifacts
+      - name: Download Deb Artifacts
         uses: actions/download-artifact@v1
         with:
-          name: lnx
-      - name: Deploy Linux Packages
+          name: deb
+      - name: Download Rpm Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: rpm
+      - name: Deploy Deb Packages
         uses: JamesIves/github-pages-deploy-action@3.7.1
         with:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           BRANCH: build
-          FOLDER: lnx
+          FOLDER: deb
           CLEAN: true
+      - name: Deploy Rpm Packages
+        uses: JamesIves/github-pages-deploy-action@3.7.1
+        with:
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          BRANCH: build
+          FOLDER: rpm
+          CLEAN: false
       - name: Download macOS Artifacts
         uses: actions/download-artifact@v1
         with:
