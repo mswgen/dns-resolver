@@ -3,15 +3,13 @@ module.exports = {
         {
             name: '@electron-forge/maker-dmg',
             config: {
-                productName: 'DNS Resolver',
-                name: 'dns-resolver'
+                productName: 'DNS Resolver'
             }
         },
         {
             name: '@electron-forge/maker-rpm',
             config: {
                 options: {
-                    name: 'dns-resolver',
                     productName: 'DNS Resolver'
                 }
             }
@@ -20,7 +18,6 @@ module.exports = {
             name: '@electron-forge/maker-deb',
             config: {
                 options: {
-                    name: 'dns-resolver',
                     productName: 'DNS Resolver'
                 }
             }
