@@ -28,7 +28,7 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: lnx
-          path: build
+          path: out/make
   buildMac:
     name: macOS Application(.dmg)
     runs-on: macos-latest
@@ -49,7 +49,7 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: mac
-          path: build
+          path: out/make
   buildWin:
     name: Windows Executable(.exe)
     runs-on: windows-latest
@@ -70,7 +70,7 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: win
-          path: build
+          path: out/make
   deploy:
     needs: [buildLnx, buildMac, buildWin]
     runs-on: ubuntu-latest
@@ -89,16 +89,16 @@ jobs:
         with:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           BRANCH: build
-          FOLDER: "lnx"
+          FOLDER: lnx/out/make
       - name: Deploy macOS Application
         uses: JamesIves/github-pages-deploy-action@3.7.1
         with:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           BRANCH: build
-          FOLDER: "mac"
+          FOLDER: mac/out/make
       - name: Deploy Windows Executable
         uses: JamesIves/github-pages-deploy-action@3.7.1
         with:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           BRANCH: build
-          FOLDER: "win"
+          FOLDER: win/out/make
