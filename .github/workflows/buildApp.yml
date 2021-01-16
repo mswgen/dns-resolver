@@ -28,7 +28,7 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: lnx
-          path: out/make
+          path: out/make/deb/x64
   buildMac:
     name: macOS Application(.dmg)
     runs-on: macos-latest
@@ -70,7 +70,7 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: win
-          path: out/make
+          path: out/make/squirrel.windows/x64
   deploy:
     needs: [buildLnx, buildMac, buildWin]
     runs-on: ubuntu-latest
@@ -79,8 +79,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           persist-credentials: false
-
-      - name: Download Artifacts
+      - name: Download Linux Artifacts
         uses: actions/download-artifact@v1
         with:
           name: lnx
@@ -90,15 +89,26 @@ jobs:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           BRANCH: build
           FOLDER: lnx
+          CLEAN: false
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: mac
       - name: Deploy macOS Application
         uses: JamesIves/github-pages-deploy-action@3.7.1
         with:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           BRANCH: build
           FOLDER: mac
+          CLEAN: false
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: win
       - name: Deploy Windows Executable
         uses: JamesIves/github-pages-deploy-action@3.7.1
         with:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           BRANCH: build
           FOLDER: win
+          CLEAN: false
