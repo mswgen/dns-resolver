@@ -7,11 +7,12 @@ module.exports = {
             }
         },
         {
-            name: '@electron-forge/maker-squirrel',
+            name: '@electron-forge/maker-deb',
             config: {
-                name: 'DNS Resolver',
-                noMsi: true,
-                setupExe: 'DNS Resolver'
+                options: {
+                    name: 'dns-resolver',
+                    productName: 'DNS Resolver'
+                }
             }
         }
     ]
