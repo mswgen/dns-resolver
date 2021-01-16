@@ -32,5 +32,8 @@ module.exports = {
                 noMsi: true
             }
         }
-    ]
+    ],
+    packagerConfig: {
+        executableName: 'DNS Resolver'
+    }
 }
