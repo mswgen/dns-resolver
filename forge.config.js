@@ -25,12 +25,11 @@ module.exports = {
             name: '@electron-forge/maker-squirrel',
             config: {
                 noMsi: true,
-                name: 'DnsResolver'
+                name: 'dns-resolver'
             }
         }
     ],
     packagerConfig: {
-        executableName: 'DNS Resolver',
         name: 'DNS Resolver'
     }
 }
