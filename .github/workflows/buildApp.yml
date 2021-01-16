@@ -89,7 +89,7 @@ jobs:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           BRANCH: build
           FOLDER: lnx
-          CLEAN: false
+          CLEAN: true
       - name: Download macOS Artifacts
         uses: actions/download-artifact@v1
         with:
