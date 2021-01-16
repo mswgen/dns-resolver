@@ -17,6 +17,7 @@ module.exports = {
         }
     ],
     packagerConfig: {
-        executableName: 'dns-Resolver'
+        executableName: 'DNS Resolver',
+        name: 'DNS Resolver'
     }
 }
