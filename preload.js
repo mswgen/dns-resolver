@@ -1,4 +1,5 @@
 window.addEventListener('load', () => {
+  console.log('1.2.5');
   const axios = require('axios').default;
   const punycode = require('punycode/');
   document.querySelector('#resolve').addEventListener('click', () => {
