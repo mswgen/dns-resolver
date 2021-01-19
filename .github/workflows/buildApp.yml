@@ -41,12 +41,12 @@ jobs:
       - name: Get package name
         run: echo ::set-output name=PACKAGE_NAME::$(ls out/make/snap/x64)
         id: package-name
+      - name: Unpack snap file
+        run: unsquashfs out/make/snap/x64/${{steps.package-name.outputs.PACKAGE_NAME }}
       - name: Pack snap file
-        run: snapcraft pack out/make/snap/x64/${{steps.package-name.outputs.PACKAGE_NAME }}
-      - name: asdf
-        run: ls
+        run: mksquashfs ./squashfs-root ./out/make/snap/${{steps.package-name.outputs.PACKAGE_NAME }} -noappend -comp xz -all-root -no-xattrs -no-fragments
       - name: Deploy Snapcraft
-        run: snapcraft upload --release=stable out/make/snap/x64/${{steps.package-name.outputs.PACKAGE_NAME }}
+        run: snapcraft upload --release=stable out/make/snap/${{steps.package-name.outputs.PACKAGE_NAME }}
   buildMac:
     name: macOS Application(.dmg)
     runs-on: macos-latest
