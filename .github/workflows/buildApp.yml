@@ -20,8 +20,8 @@ jobs:
           persist-credentials: false 
       - name: Install Dependencies
         run: npm i
-      - name: Install rpm, fakeroot, and dpkg
-        run: sudo apt install rpm fakeroot dpkg
+      - name: Install rpm, fakeroot, dpkg, and snapcraft
+        run: sudo apt install rpm fakeroot dpkg snapcraft
       - name: Build
         run: npm run make
       - name: Upload Deb Artifacts
