@@ -39,7 +39,7 @@ jobs:
         with:
           snapcraft_token: ${{ secrets.SNAPCRAFT }}
       - name: Copy some files
-        run: cp out/make/snap/x64/dns-resolver.snap .
+        run: ls ./out/make/snap/x64 && cp out/make/snap/x64/dns-resolver.snap .
       - name: Deploy Snapcraft
         run: snapcraft upload --release=stable out/make/snap/x64/dns-resolver.snap
   buildMac:
