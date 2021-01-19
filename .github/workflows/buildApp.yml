@@ -20,8 +20,8 @@ jobs:
           persist-credentials: false 
       - name: Install Dependencies
         run: npm i
-      - name: Install rpm, fakeroot, and dpkg
-        run: sudo apt install rpm fakeroot dpkg
+      - name: Install rpm, fakeroot, dpkg, and snapcraft
+        run: sudo apt install rpm fakeroot dpkg snapcraft
       - name: Build
         run: npm run make
       - name: Upload Deb Artifacts
@@ -38,6 +38,7 @@ jobs:
         uses: samuelmeuli/action-snapcraft@v1
         with:
           snapcraft_token: ${{ secrets.SNAPCRAFT }}
+          skip_install: true
       - name: Deploy Snapcraft
         run: snapcraft upload --release=stable out/make/snap/x64/dns-resolver.snap
   buildMac:
