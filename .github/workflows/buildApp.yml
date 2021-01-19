@@ -37,7 +37,7 @@ jobs:
       - name: Install Snapcraft and login
         uses: samuelmeuli/action-snapcraft@v1
         with:
-        snapcraft_token: ${{ secrets.SNAPCRAFT }}
+          snapcraft_token: ${{ secrets.SNAPCRAFT }}
       - name: Deploy Snapcraft
         run: snapcraft upload --release=stable out/make/snap/x64/dns-resolver.snap
   buildMac:
