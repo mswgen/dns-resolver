@@ -38,8 +38,9 @@ jobs:
         uses: samuelmeuli/action-snapcraft@v1
         with:
           snapcraft_token: ${{ secrets.SNAPCRAFT }}
-      - name: Deploy Snapcraft
+      - name: Copy some files
         run: cp out/make/snap/x64/dns-resolver.snap .
+      - name: Deploy Snapcraft
         run: snapcraft upload --release=stable out/make/snap/x64/dns-resolver.snap
   buildMac:
     name: macOS Application(.dmg)
