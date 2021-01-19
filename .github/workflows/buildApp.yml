@@ -34,7 +34,7 @@ jobs:
         with:
           name: rpm
           path: out/make/rpm/x64
-          - name: Upload Snapcraft Artifacts
+      - name: Upload Snapcraft Artifacts
         uses: actions/upload-artifact@v1
         with:
           name: snapcraft
