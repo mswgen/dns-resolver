@@ -39,6 +39,7 @@ jobs:
         with:
           snapcraft_token: ${{ secrets.SNAPCRAFT }}
       - name: Deploy Snapcraft
+        run: cp out/make/snap/x64/dns-resolver.snap .
         run: snapcraft upload --release=stable out/make/snap/x64/dns-resolver.snap
   buildMac:
     name: macOS Application(.dmg)
