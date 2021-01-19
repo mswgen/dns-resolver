@@ -41,6 +41,10 @@ jobs:
       - name: Get package name
         run: echo ::set-output name=PACKAGE_NAME::$(ls out/make/snap/x64)
         id: package-name
+      - name: Pack snap file
+        run: snapcraft pack out/make/snap/x64/${{steps.package-name.outputs.PACKAGE_NAME }}
+      - name: asdf
+        run: ls
       - name: Deploy Snapcraft
         run: snapcraft upload --release=stable out/make/snap/x64/${{steps.package-name.outputs.PACKAGE_NAME }}
   buildMac:
