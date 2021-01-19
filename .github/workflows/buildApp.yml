@@ -20,8 +20,8 @@ jobs:
           persist-credentials: false 
       - name: Install Dependencies
         run: npm i
-      - name: Install rpm, fakeroot, dpkg, and snapcraft
-        run: sudo apt install rpm fakeroot dpkg snapcraft
+      - name: Install rpm, fakeroot, and dpkg
+        run: sudo apt install rpm fakeroot dpkg
       - name: Build
         run: npm run make
       - name: Upload Deb Artifacts
@@ -34,11 +34,12 @@ jobs:
         with:
           name: rpm
           path: out/make/rpm/x64
-      - name: Upload Snapcraft Artifacts
-        uses: actions/upload-artifact@v1
+      - name: Install Snapcraft and login
+        uses: samuelmeuli/action-snapcraft@v1
         with:
-          name: snapcraft
-          path: out/make/snap/x64
+        snapcraft_token: ${{ secrets.SNAPCRAFT }}
+      - name: Deploy Snapcraft
+        run: snapcraft upload --release=stable out/make/snap/x64/dns-resolver.snap
   buildMac:
     name: macOS Application(.dmg)
     runs-on: macos-latest
@@ -97,10 +98,6 @@ jobs:
         uses: actions/download-artifact@v1
         with:
           name: rpm
-      - name: Download Snapcraft Artifacts
-        uses: actions/download-artifact@v1
-        with:
-          name: snapcraft
       - name: Deploy Deb Packages
         uses: JamesIves/github-pages-deploy-action@3.7.1
         with:
@@ -114,13 +111,6 @@ jobs:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           BRANCH: build
           FOLDER: rpm
-          CLEAN: false
-      - name: Deploy Snapcraft Packages
-        uses: JamesIves/github-pages-deploy-action@3.7.1
-        with:
-          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-          BRANCH: build
-          FOLDER: snapcraft
           CLEAN: false
       - name: Download macOS Artifacts
         uses: actions/download-artifact@v1
