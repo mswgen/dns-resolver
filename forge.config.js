@@ -28,6 +28,15 @@ module.exports = {
                 name: 'dns-resolver',
                 exe: 'dns-resolver.exe'
             }
+        },
+        {
+            name: '@electron-forge/maker-snap',
+            config: {
+                confinement: 'strict',
+                grade: 'stable',
+                name: 'DNS Resolver',
+                summary: 'A simple app for resolving DNS'
+            }
         }
     ],
     packagerConfig: {
