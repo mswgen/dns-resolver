@@ -34,9 +34,9 @@ module.exports = {
             config: {
                 confinement: 'strict',
                 grade: 'stable',
-                name: 'dns-resolver',
-                applicationName: 'dns-resolver',
-                packagedExecutableName: 'dns-resolver',
+                name: 'DNS Resolver',
+                applicationName: 'DNS Resolver',
+                packagedExecutableName: 'DNS Resolver',
                 summary: 'A simple app for resolving DNS',
                 features: {
                     browserSandbox: false
@@ -47,6 +47,6 @@ module.exports = {
     ],
     packagerConfig: {
         name: 'DNS Resolver',
-        executableName: 'dns-resolver'
+        // executableName: 'dns-resolver'
     }
 }
