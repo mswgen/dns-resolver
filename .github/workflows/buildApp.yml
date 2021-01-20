@@ -23,7 +23,7 @@ jobs:
       - name: Install rpm, fakeroot, dpkg, and snapcraft
         run: sudo apt install rpm fakeroot dpkg snapcraft
       - name: Build
-        run: npm run package && ls out/make/snapcraft/x64
+        run: npm run build
       - name: Upload Deb Artifacts
         uses: actions/upload-artifact@v1
         with:
