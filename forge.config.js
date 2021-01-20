@@ -39,7 +39,8 @@ module.exports = {
                 executableName: 'dns-resolver.snap',
                 features: {
                     browserSandbox: false
-                }
+                },
+                icon: './logo.png'
             }
         }
     ],
