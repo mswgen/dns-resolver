@@ -35,8 +35,8 @@ module.exports = {
                 confinement: 'strict',
                 grade: 'stable',
                 name: 'DNS Resolver',
+                applicationName: 'DNS Resolver',
                 summary: 'A simple app for resolving DNS',
-                executableName: 'dns-resolver.snap',
                 features: {
                     browserSandbox: false
                 },
