@@ -34,7 +34,7 @@ module.exports = {
             config: {
                 confinement: 'strict',
                 grade: 'stable',
-                name: 'DNS Resolver',
+                name: 'dns-resolver',
                 applicationName: 'DNS Resolver',
                 packagedExecutableName: 'dns-resolver',
                 summary: 'A simple app for resolving DNS',
