@@ -30,7 +30,7 @@ module.exports = {
             }
         },
         {
-            name: '@electron-forge/maker-snap',
+            name: '@davidwinter/electron-forge-maker-snap',
             config: {
                 confinement: 'strict',
                 grade: 'stable',
