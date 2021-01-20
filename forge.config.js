@@ -36,6 +36,7 @@ module.exports = {
                 grade: 'stable',
                 name: 'DNS Resolver',
                 applicationName: 'DNS Resolver',
+                packagedExecutableName: 'dns-resolver',
                 summary: 'A simple app for resolving DNS',
                 features: {
                     browserSandbox: false
