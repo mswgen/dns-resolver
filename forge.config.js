@@ -30,12 +30,11 @@ module.exports = {
             }
         },
         {
-            name: '@davidwinter/electron-forge-maker-snap',
+            name: '@electron-forge/maker-snap',
             config: {
                 confinement: 'strict',
                 grade: 'stable',
                 name: 'DNS Resolver',
-                applicationName: 'DNS Resolver',
                 packagedExecutableName: 'dns-resolver',
                 summary: 'A simple app for resolving DNS',
                 features: {
