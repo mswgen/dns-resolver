@@ -4,20 +4,6 @@ module.exports = {
             name: '@electron-forge/maker-dmg'
         },
         {
-            name: '@electron-forge/maker-snap',
-            config: {
-                confinement: 'strict',
-                grade: 'stable',
-                name: 'DNS Resolver',
-                packagedExecutableName: 'dns-resolver',
-                summary: 'A simple app for resolving DNS',
-                features: {
-                    browserSandbox: false
-                },
-                icon: './logo.png'
-            }
-        },
-        {
             name: '@electron-forge/maker-rpm',
             config: {
                 options: {
