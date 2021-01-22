@@ -7,8 +7,8 @@ on:
   pull_request:
 jobs:
   buildLnx:
-    name: Debian, RedHat, and Snapcraft Package(.deb, .rpm, .snap)
-    runs-on: ubuntu-18.04
+    name: Debian, RedHat Package(.deb, .rpm)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-node@v2-beta
         with:
@@ -20,8 +20,8 @@ jobs:
           persist-credentials: false 
       - name: Install Dependencies
         run: npm i
-      - name: Install rpm, fakeroot, dpkg, and snapcraft
-        run: sudo apt update && sudo apt install rpm fakeroot dpkg snapcraft
+      - name: Install rpm, fakeroot, and dpkg
+        run: sudo apt update && sudo apt install rpm fakeroot dpkg
       - name: Build
         run: npm run make
       - name: Upload Deb Artifacts
@@ -34,19 +34,6 @@ jobs:
         with:
           name: rpm
           path: out/make/rpm/x64
-      - name: Install Snapcraft and login
-        uses: samuelmeuli/action-snapcraft@v1
-        with:
-          snapcraft_token: ${{ secrets.SNAPCRAFT }}
-      - name: Get package name
-        run: echo ::set-output name=PACKAGE_NAME::$(ls out/make/snap/x64)
-        id: package-name
-      - name: Unpack snap file
-        run: unsquashfs out/make/snap/x64/${{steps.package-name.outputs.PACKAGE_NAME }}
-      - name: Pack snap file
-        run: mksquashfs ./squashfs-root ./out/make/snap/${{steps.package-name.outputs.PACKAGE_NAME }} -noappend -comp xz -all-root -no-xattrs -no-fragments
-      - name: Deploy Snapcraft
-        run: snapcraft upload --release=stable out/make/snap/${{steps.package-name.outputs.PACKAGE_NAME }}
   buildMac:
     name: macOS Application(.dmg)
     runs-on: macos-latest
