@@ -2,20 +2,50 @@
 
 # 설치
 
-Windows: exe 파일을 다운받은 다음 설치 파일을 실행하면 자동으로 설치됩니다.
+## Windows(64비트)
 
-**주의: Microsoft Defender Smartscreen에 의해 정상적으로 실행되지 않습니다. 이 경우 '고급 옵션'에서 실행하기를 눌러주세요.**
+아래에서 exe 파일을 다운받고 실행하면 자동으로 설치돼요. 이떄 Microsoft Defender SmartScreen이 뜨면 고급 옵션에서 실행하기를 눌러주세요.
 
+## Windows(32비트)
 
-macOS: dmg 파일을 다운받고 마운트한 다음, 앱을 오른쪽 폴더로 드래그하면 됩니다.
+아래에서 msi 파일을 다운받고 설치해주세요. 이떄 Microsoft Defender SmartScreen이 뜨면 고급 옵션에서 실행하기를 눌러주세요.
 
-**주의: 앱을 처음으로 실행할 때는 Finder-Applications에서 앱을 우클릭한 다음 실행을 눌러주세요**
+## macOS
 
+아래에서 dmg 파일을 다운받고 마운트한 다음, 왼쪽의 DNS Resolver를 오른쪽의 애플리케이션 폴더로 드래그해주세요.
 
-Linux: 자신의 배포판에 따라 deb 혹은 rpm을 다운받고 실행해주세요.
+**__중요__**: 첫 실행 시 아래와 같은 창이 떠요. 
+
+![Blocked](./macos-blocked.png)
+
+이 경우 Finder-애플리케이션-DNS Resolver를 우클릭-열기에서 열기를 눌러주세요. (2번째 실행부터는 Launchpad를 이용하면 돼요)
+
+![Open-1](./macos-open-1.png)
+
+![Open-2](./macos-open-2.png)
+
+## Linux
+
+Ubuntu/Debian: deb 파일
+
+RedHat/Fefora/CentOS: rpm 파일
+
+을 다운받은 다음 OS의 패키지 매니저를 이용해 설치해주세요.
+
+(다른 리눅스 배포판은 지원하지 않아요.)
 
 # 업데이트
 
-이 앱이 인증되어 있지 않기 때문에 자동 업데이트가 불가능합니다. 이 경우 [레포지토리](https://github.com/int-Team/dns-resolver/releases)에서 수동으로 최신 버전을 다운로드, 설치해주세요.
+## Windows(64비트, 32비트)
+
+업데이트가 있으면 자동으로 다운로드/설치되며, 이 경우 앱을 재실행하면 업데이트가 적용돼요.
+
+## macOS
+
+macOS의 코드 사이닝 적책에 의해 자동 업데이트를 받을 수 없어요.
 
 ~~사실 이제 저희가 학생이다보니 개발자 인증받을 돈이 없어서 그런겁니다. 죄송하지만 이해해주세요. 근데 왜 이게 돈이 드는거냐고ㅗㅗㅗㅗㅗㅗㅗㅗㅗㅗㅗㅗㅗㅗ~~
+
+## Linux
+
+현재는 업데이트가 불가능하지만 열심히 개발 중이니 기다려주세요!
