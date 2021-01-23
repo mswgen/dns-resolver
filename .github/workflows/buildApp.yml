@@ -48,8 +48,6 @@ jobs:
           persist-credentials: false 
       - name: Install Dependencies
         run: npm i
-      - name: Install Additional Dependencies
-        run: npm i macos-alias
       - name: Build
         run: npm run make
       - name: Upload Artifacts
