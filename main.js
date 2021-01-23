@@ -15,7 +15,9 @@ function createWindow () {
 app.whenReady().then(() => {
   createWindow()
   if (process.platform == 'win32' || process.platform == 'darwin') {
-    updater();
+    updater({
+      notifyUser: false
+    });
   }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
