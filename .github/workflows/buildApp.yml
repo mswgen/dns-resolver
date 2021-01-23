@@ -69,8 +69,10 @@ jobs:
           persist-credentials: false 
       - name: Install Dependencies
         run: npm i
+      - name: Install Additional Dependencies
+        run: npm i exe-icon-extractor
       - name: Add light and candle to PATH
-        run: $Env:PATH += ";C:\Program Files (x86)\Wix Toolset v3.11\bin && Set-ItemProperty -Path 'Registry::HKEY_CURRENT_USER\Environment' -Name PATH -Value $Env:PATH"
+        run: echo "C:\Program Files (x86)\Wix Toolset v3.11\bin" >> $GITHUB_PATH
       - name: Build
         run: npm run make
       - name: Upload Squirrel Artifacts
