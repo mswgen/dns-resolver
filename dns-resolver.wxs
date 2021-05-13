@@ -1,0 +1,1628 @@
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" 
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+  <!-- http://wixtoolset.org/documentation/manual/v3/xsd/wix/product.html -->
+  <Product Id="5287D665-3311-4749-BF48-F22A62C389EA" 
+           UpgradeCode="676330ba-d4ea-4da8-a310-02bb449823ac"
+           Name = "DNS Resolver (Machine - MSI)"
+           Version="1.3.1.0"
+           Manufacturer="Team int"
+           Language="1042">
+    <!-- Only run this installer on Windows 7 or up (or if it"s already installed, I guess) -->
+    <!-- <Condition Message="This application is only supported on Windows 7 or higher.">
+      <![CDATA[Installed OR (VersionNT >= 601)]]>
+    </Condition> -->
+    <!-- http://wixtoolset.org/documentation/manual/v3/xsd/wix/package.html -->
+    <Package InstallerVersion="405"
+             Compressed="yes"
+             Comments="Windows Installer Package"
+             Platform="x86"/>
+    <!-- Don't allow downgrades -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A later version of this product is already installed. Setup will now exit."/>
+    <!-- This will hide our Uninstall entry in Apps & Features. We doing this so
+    we can write our own which we can better control. -->
+    <Property Id="ARPSYSTEMCOMPONENT" Value="1" />
+    <!-- While the MSI package is hidden in Apps & Features, it can still be queried
+    via PowerShell and other means. To differentiate we give the public entry a slightly
+    different name to make admins life easier.  -->
+    <Property Id="VisibleProductName" Value="DNS Resolver (Machine)" />
+    <!-- Signals Single Package Authoring. This pacakge can pe installed perMachine
+    or perUser. The mode is determined by the property below. -->
+    <Property Id="ALLUSERS" Secure="yes" Value="2" />
+    <!-- Tells the package to install perUser or perMachine. In case of perUser, all
+    files will be redirected to the user profile and all registry entries to HKCU. -->
+    <Property Id="MSIINSTALLPERUSER" Secure="yes" Value="0" />
+    <!-- Overides the default install mode. It solves a problem where
+    individual packaged files that have the same version as in previous
+    installed App version will be deleted if the files are in use during
+    this upgrade. Unfortunately this causes an ICE 40 warning during linking. -->
+    <Property Id="REINSTALLMODE" Value="emus" />
+    <!-- Overrides the default reboot behavior if files are in use during the upgrade.
+     This way no unpxecpted reboot will happpen.-->
+    <Property Id="REBOOT" Value="ReallySuppress" />
+    <!-- A property that holds the intall path and is needed to delete all files on
+    uninstall, even if they are not wriiten as part of this MSI. The value comes from a 
+    registry we set on install.-->
+    <Property Id="INSTALLLEVEL" Value="2" />
+    <!-- Allows to customize the Windows user group that gets access rights on
+    the install folder in cas the auto-updater is installed. User that run the App
+    must be part of that user group to be able to auto-update. -->
+    <Property Id="UPDATERUSERGROUP" Value="Users" />
+    <!-- A property to define whether the auto-updater is enabled when the
+    feature gets installed. This way the update can be installed but also be disabled
+    by overwriting the default value.  -->
+    <Property Id="AUTOUPDATEENABLED" Value="1" />
+    <!-- Necessary registry search to find the install path which is used by the
+    PurgeOnUninstall action. Since this package can be installed perUser or perMachine,
+    we have to look in both places. First successful search wins. -->
+    <Property Id="INSTALLPATH">
+      <RegistrySearch Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{5287D665-3311-4749-BF48-F22A62C389EA}.msq"
+                      Root="HKCU" 
+                      Type="raw"
+                      Id="INSTALLPATH_REGSEARCH_HKCU"
+                      Name="InstallPath"
+                      Win64="no"/>
+      <RegistrySearch Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{5287D665-3311-4749-BF48-F22A62C389EA}.msq"
+                      Root="HKLM" 
+                      Type="raw"
+                      Id="INSTALLPATH_REGSEARCH_HKLM"
+                      Name="InstallPath"
+                      Win64="no"/>
+    </Property>
+    <!-- Lets change the product name depending on the perUser installMode. 
+    This way the user and admins can see in which scope the MSI was installed. -->
+    <SetProperty Action="SetVisibleProductName" Id="VisibleProductName" Sequence="both" Before="AppSearch"  Value="DNS Resolver (User)">
+      <![CDATA[MSIINSTALLPERUSER = "1"]]>
+    </SetProperty>
+    <!-- Again we give thee MSI generaten entry a slightly different name to help 
+    differentiate between the public one and the invisible one. -->
+    <SetProperty Action="SetProductName" Id="ProductName" Sequence="both" Before="AppSearch"  Value="DNS Resolver (User - MSI)">
+      <![CDATA[MSIINSTALLPERUSER = "1"]]>
+    </SetProperty>
+
+    <Media Id="1" Cabinet="product.cab" EmbedCab="yes"/>
+
+    <UI Id="UserInterface">
+      <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
+      <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
+      <TextStyle Id="WixUI_Font_Title" FaceName="Tahoma" Size="9" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+      <Property Id="WixUI_Mode" Value="FeatureTree" />
+      <DialogRef Id="ErrorDlg" />
+      <DialogRef Id="FatalError" />
+      <DialogRef Id="FilesInUse" />
+      <DialogRef Id="MsiRMFilesInUse" />
+      <DialogRef Id="PrepareDlg" />
+      <DialogRef Id="ProgressDlg" />
+      <DialogRef Id="ResumeDlg" />
+      <DialogRef Id="UserExit" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999">1</Publish>
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="CustomizeDlg">NOT Installed</Publish>
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg">Installed AND PATCH</Publish>
+      <Publish Dialog="CustomizeDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="1">Installed</Publish>
+      <Publish Dialog="CustomizeDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="2">NOT Installed</Publish>
+      <Publish Dialog="CustomizeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="CustomizeDlg" Order="1">NOT Installed OR WixUI_InstallMode = "Change"</Publish>
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="2">Installed AND NOT PATCH</Publish>
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="3">Installed AND PATCH</Publish>
+      <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg">1</Publish>
+      <Publish Dialog="MaintenanceTypeDlg" Control="ChangeButton" Event="NewDialog" Value="CustomizeDlg">1</Publish>
+      <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+      <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg">1</Publish>
+    </UI>
+    <UIRef Id="WixUI_Common" />
+
+
+    <!-- Step 2: Add files and directories -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+       <!-- Installation files to %PROGRAMFILES% -->
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="APPLICATIONROOTDIRECTORY" Name="DNS Resolver">
+          <Directory Id="__028e9adf_4bdd_4f49_ad13_2c1c66fd3ff7" Name="app-1.3.1">
+            <Directory Id="_locales_8eb63c4c_a628_4bb8_8382_84e0c5b9ec07" Name="locales">
+              <Component Id="_locales_am.pak_f1ee3d3e_32a7_414e_ace2_2cbae41459d1" Guid="55dfcbd4-4bee-421e-8690-5272cc83a7b1" Win64="no">
+                <File Name="am.pak" Id="_locales_am.pak_f1ee3d3e_32a7_414e_ace2_2cbae41459d1" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\am.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ar.pak_45123631_eee0_49d3_9f11_72ffd5b21a49" Guid="4a65c1a1-3401-4c20-b4df-3e8237324227" Win64="no">
+                <File Name="ar.pak" Id="_locales_ar.pak_45123631_eee0_49d3_9f11_72ffd5b21a49" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\ar.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_bg.pak_794f89ce_34c2_416e_96c6_bab3b691e7d6" Guid="a0d2cb74-799b-44fd-a663-8ebd7f878b0b" Win64="no">
+                <File Name="bg.pak" Id="_locales_bg.pak_794f89ce_34c2_416e_96c6_bab3b691e7d6" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\bg.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_bn.pak_5ff8b386_5b56_463b_9295_a4d6097db455" Guid="975fe059-a4df-4353-9a6d-6f11556922e7" Win64="no">
+                <File Name="bn.pak" Id="_locales_bn.pak_5ff8b386_5b56_463b_9295_a4d6097db455" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\bn.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ca.pak_982f4a04_d6a2_4858_a3fb_5520614256e3" Guid="d718e98f-3f31-4e67-a3e4-3cc8edd21df4" Win64="no">
+                <File Name="ca.pak" Id="_locales_ca.pak_982f4a04_d6a2_4858_a3fb_5520614256e3" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\ca.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_cs.pak_9888b0c9_b3e7_482e_a32f_08d88a1de47a" Guid="68dfed0b-abf0-48fe-8f17-e683e612f2e0" Win64="no">
+                <File Name="cs.pak" Id="_locales_cs.pak_9888b0c9_b3e7_482e_a32f_08d88a1de47a" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\cs.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_da.pak_9bb5ee40_1587_4bdc_af42_8443e586ab49" Guid="744afc33-23e8-4042-b694-669b0369a602" Win64="no">
+                <File Name="da.pak" Id="_locales_da.pak_9bb5ee40_1587_4bdc_af42_8443e586ab49" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\da.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_de.pak_55e8f689_2e0c_4d43_9d63_fd3777614a87" Guid="9b1a7895-a600-4784-87a9-d7a5bab6beec" Win64="no">
+                <File Name="de.pak" Id="_locales_de.pak_55e8f689_2e0c_4d43_9d63_fd3777614a87" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\de.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_el.pak_0b41a088_e718_4aa8_8c99_2c918c0d5e0f" Guid="6567e279-8df9-41de-a789-e8a2f9ebcea8" Win64="no">
+                <File Name="el.pak" Id="_locales_el.pak_0b41a088_e718_4aa8_8c99_2c918c0d5e0f" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\el.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_en_GB.pak_e279342f_e451_449e_8373_e341046ce992" Guid="60c2b02c-6ee7-4f1c-88e1-da9f35289459" Win64="no">
+                <File Name="en-GB.pak" Id="_locales_en_GB.pak_e279342f_e451_449e_8373_e341046ce992" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\en-GB.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_en_US.pak_22bac4c4_2775_4c52_9dc7_9e10af213688" Guid="e96a69c6-d608-4614-ab40-c430315312b3" Win64="no">
+                <File Name="en-US.pak" Id="_locales_en_US.pak_22bac4c4_2775_4c52_9dc7_9e10af213688" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\en-US.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_es_419.pak_9df55fba_044a_4bb3_aef8_1faa7a7e7b7b" Guid="bb4697ad-352b-4784-a796-55722a46c478" Win64="no">
+                <File Name="es-419.pak" Id="_locales_es_419.pak_9df55fba_044a_4bb3_aef8_1faa7a7e7b7b" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\es-419.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_es.pak_a4cea106_87d5_425b_8045_0a6c76b2ef81" Guid="df5e281f-810b-44e0-9b2f-aa3be35dd8c7" Win64="no">
+                <File Name="es.pak" Id="_locales_es.pak_a4cea106_87d5_425b_8045_0a6c76b2ef81" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\es.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_et.pak_05619faf_e07b_456e_8b40_44b7eda4de6d" Guid="2cdc1dab-7b6e-49cb-a7c4-e07f1717b4ef" Win64="no">
+                <File Name="et.pak" Id="_locales_et.pak_05619faf_e07b_456e_8b40_44b7eda4de6d" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\et.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_fa.pak_131b51f9_a257_4be4_b330_fad67b828b8d" Guid="21007001-e94f-4027-b148-64425dfba866" Win64="no">
+                <File Name="fa.pak" Id="_locales_fa.pak_131b51f9_a257_4be4_b330_fad67b828b8d" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\fa.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_fi.pak_4afd9daf_67c4_4216_a07f_437e6f3f7ff5" Guid="6f5761ab-7f08-4f74-8c73-18adf261e4e5" Win64="no">
+                <File Name="fi.pak" Id="_locales_fi.pak_4afd9daf_67c4_4216_a07f_437e6f3f7ff5" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\fi.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_fil.pak_1e469ca3_51ca_4da5_94f3_26afeb13ac20" Guid="c959b6d8-56ca-469f-ad41-941f90260e11" Win64="no">
+                <File Name="fil.pak" Id="_locales_fil.pak_1e469ca3_51ca_4da5_94f3_26afeb13ac20" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\fil.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_fr.pak_65341c51_0aaf_4bd6_baf9_c4a37c63654c" Guid="1413bdc3-9306-4d5c-8c7c-91130fea8b2e" Win64="no">
+                <File Name="fr.pak" Id="_locales_fr.pak_65341c51_0aaf_4bd6_baf9_c4a37c63654c" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\fr.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_gu.pak_65c3bc52_c1b7_4bf7_b145_bd17dabd1c75" Guid="901c9685-661e-4610-a569-e8e2992fa4f9" Win64="no">
+                <File Name="gu.pak" Id="_locales_gu.pak_65c3bc52_c1b7_4bf7_b145_bd17dabd1c75" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\gu.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_he.pak_7bbf7dbc_0273_4ff0_8d1c_0cf39abfc665" Guid="29ee79cc-a247-4fba-9008-eb3579ecd0f7" Win64="no">
+                <File Name="he.pak" Id="_locales_he.pak_7bbf7dbc_0273_4ff0_8d1c_0cf39abfc665" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\he.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_hi.pak_62162f14_e737_4775_83dd_36b7e5b1413c" Guid="90d4c903-9848-4d22-bdbd-2dd8780ea18a" Win64="no">
+                <File Name="hi.pak" Id="_locales_hi.pak_62162f14_e737_4775_83dd_36b7e5b1413c" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\hi.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_hr.pak_5763337e_0c6f_4b58_b00c_f28fd327184a" Guid="b7b9fa51-29d6-40f5-9146-369fc28792cd" Win64="no">
+                <File Name="hr.pak" Id="_locales_hr.pak_5763337e_0c6f_4b58_b00c_f28fd327184a" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\hr.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_hu.pak_133ce4f1_2a7a_4344_b8bb_32d0929ddc3c" Guid="825465a0-a43c-4688-8609-6e4132118ce6" Win64="no">
+                <File Name="hu.pak" Id="_locales_hu.pak_133ce4f1_2a7a_4344_b8bb_32d0929ddc3c" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\hu.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_id.pak_ff9f9956_a56f_44b2_95cd_1b5d04f0c355" Guid="4246e128-d6e4-41d6-9a9b-0a64ac57e6bc" Win64="no">
+                <File Name="id.pak" Id="_locales_id.pak_ff9f9956_a56f_44b2_95cd_1b5d04f0c355" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\id.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_it.pak_bd8ac6dc_f837_471a_83fc_6b76641cbbda" Guid="a11ab9d3-4701-4587-a464-d5d107088cc8" Win64="no">
+                <File Name="it.pak" Id="_locales_it.pak_bd8ac6dc_f837_471a_83fc_6b76641cbbda" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\it.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ja.pak_9e1fe337_4e1a_4d3c_a54e_8caedee812f4" Guid="3c6fb950-942f-4c21-b839-d9c0e766bd45" Win64="no">
+                <File Name="ja.pak" Id="_locales_ja.pak_9e1fe337_4e1a_4d3c_a54e_8caedee812f4" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\ja.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_kn.pak_2db8730b_c8b6_4964_bf6d_89391ba66627" Guid="c70ea415-27aa-40b0-a3b9-549952b27eaf" Win64="no">
+                <File Name="kn.pak" Id="_locales_kn.pak_2db8730b_c8b6_4964_bf6d_89391ba66627" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\kn.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ko.pak_0b6942de_ce93_4f05_b818_acaf3bae0776" Guid="e6407b3d-0aaf-41ee-9966-62e40715cfc3" Win64="no">
+                <File Name="ko.pak" Id="_locales_ko.pak_0b6942de_ce93_4f05_b818_acaf3bae0776" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\ko.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_lt.pak_2d3835ae_b3eb_4c79_b55b_5f768c73dab8" Guid="bb522482-092b-4a90-b425-fea62abb9fc2" Win64="no">
+                <File Name="lt.pak" Id="_locales_lt.pak_2d3835ae_b3eb_4c79_b55b_5f768c73dab8" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\lt.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_lv.pak_d05e748a_61d1_479a_8b6c_f2ddd7c55728" Guid="afcc18d5-af45-4ba1-bd03-112704365bbd" Win64="no">
+                <File Name="lv.pak" Id="_locales_lv.pak_d05e748a_61d1_479a_8b6c_f2ddd7c55728" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\lv.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ml.pak_5318876c_2a0c_433a_a1f2_f11f3d482e2e" Guid="2b30f63b-62fd-4db1-883f-7fd08b0a4ead" Win64="no">
+                <File Name="ml.pak" Id="_locales_ml.pak_5318876c_2a0c_433a_a1f2_f11f3d482e2e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\ml.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_mr.pak_b2e9487c_fac9_4a89_a138_05420bf0f286" Guid="e8938065-e952-4211-98f0-38969f821f26" Win64="no">
+                <File Name="mr.pak" Id="_locales_mr.pak_b2e9487c_fac9_4a89_a138_05420bf0f286" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\mr.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ms.pak_23c10039_9881_472a_95ec_1c5a426dbb8a" Guid="c8d90b53-19dc-41e0-96db-1ffdd38249ba" Win64="no">
+                <File Name="ms.pak" Id="_locales_ms.pak_23c10039_9881_472a_95ec_1c5a426dbb8a" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\ms.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_nb.pak_8d0a4a01_0d12_4e4f_8d59_6360961e698f" Guid="334c9946-8997-4a56-84d0-c53a78bc48b4" Win64="no">
+                <File Name="nb.pak" Id="_locales_nb.pak_8d0a4a01_0d12_4e4f_8d59_6360961e698f" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\nb.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_nl.pak_b6961598_0a1e_4adf_9f82_d6a003b58700" Guid="f5e52ae3-2901-475e-932e-c24e61b60529" Win64="no">
+                <File Name="nl.pak" Id="_locales_nl.pak_b6961598_0a1e_4adf_9f82_d6a003b58700" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\nl.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_pl.pak_1d032a50_0b46_440f_bf87_039dfcec2c7c" Guid="8135d739-7af6-493e-ba32-32f64db72fee" Win64="no">
+                <File Name="pl.pak" Id="_locales_pl.pak_1d032a50_0b46_440f_bf87_039dfcec2c7c" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\pl.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_pt_BR.pak_0848fcb7_fef0_448a_a834_7c5844eccbd0" Guid="419ea019-8dc6-4b5b-8506-b691ded6bb61" Win64="no">
+                <File Name="pt-BR.pak" Id="_locales_pt_BR.pak_0848fcb7_fef0_448a_a834_7c5844eccbd0" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\pt-BR.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_pt_PT.pak_52c7666c_293a_4eca_85d9_358727319a8e" Guid="a811691f-6dbf-48ed-af03-0ae96d8a4416" Win64="no">
+                <File Name="pt-PT.pak" Id="_locales_pt_PT.pak_52c7666c_293a_4eca_85d9_358727319a8e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\pt-PT.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ro.pak_f31ec606_eb0e_44ef_a06b_4c8c52ddbcd4" Guid="3b906bf2-a79d-45c3-9289-eae8c9448afc" Win64="no">
+                <File Name="ro.pak" Id="_locales_ro.pak_f31ec606_eb0e_44ef_a06b_4c8c52ddbcd4" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\ro.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ru.pak_8f2ec96b_589d_4e08_8fac_3217de28a7e7" Guid="caea6c4d-ebcb-47ad-a339-78502628ef77" Win64="no">
+                <File Name="ru.pak" Id="_locales_ru.pak_8f2ec96b_589d_4e08_8fac_3217de28a7e7" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\ru.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_sk.pak_034fa005_b590_4e4b_9952_2060c71f7e00" Guid="5f59598e-849b-4470-98f3-6a276a9fcffd" Win64="no">
+                <File Name="sk.pak" Id="_locales_sk.pak_034fa005_b590_4e4b_9952_2060c71f7e00" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\sk.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_sl.pak_eb7a1a55_8854_4ff2_97ca_b178a3c69695" Guid="76557383-2aa3-435c-b49a-f540cd7eeb0b" Win64="no">
+                <File Name="sl.pak" Id="_locales_sl.pak_eb7a1a55_8854_4ff2_97ca_b178a3c69695" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\sl.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_sr.pak_2fa2ecb7_56bf_465c_a53f_e2475d7958f3" Guid="4273e55c-690b-4a3a-86cb-f58cae1aac75" Win64="no">
+                <File Name="sr.pak" Id="_locales_sr.pak_2fa2ecb7_56bf_465c_a53f_e2475d7958f3" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\sr.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_sv.pak_9bc6375b_b8f7_4535_bb1b_25c7ca12601c" Guid="6d03394b-5cd0-456c-995e-e15fd5a2231b" Win64="no">
+                <File Name="sv.pak" Id="_locales_sv.pak_9bc6375b_b8f7_4535_bb1b_25c7ca12601c" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\sv.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_sw.pak_a817dff3_8788_4c69_98e6_6dc538106ed3" Guid="6bda0be7-f2d8-4ad2-88dc-9a7ccddd0d5c" Win64="no">
+                <File Name="sw.pak" Id="_locales_sw.pak_a817dff3_8788_4c69_98e6_6dc538106ed3" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\sw.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ta.pak_a1844de2_47f5_445b_ad6d_85ff892c3ed6" Guid="118f0534-98da-452d-8b42-cb5a3a8819f7" Win64="no">
+                <File Name="ta.pak" Id="_locales_ta.pak_a1844de2_47f5_445b_ad6d_85ff892c3ed6" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\ta.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_te.pak_d35ac1db_4c5c_4a4e_ad47_8c6a23482bf7" Guid="adf2550e-33aa-40f4-879c-5766a87be48b" Win64="no">
+                <File Name="te.pak" Id="_locales_te.pak_d35ac1db_4c5c_4a4e_ad47_8c6a23482bf7" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\te.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_th.pak_e22d16c1_dd78_4376_9318_6a98522a5e59" Guid="45759f8e-e655-4a77-8fb9-70096205cf45" Win64="no">
+                <File Name="th.pak" Id="_locales_th.pak_e22d16c1_dd78_4376_9318_6a98522a5e59" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\th.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_tr.pak_74838196_63f7_4752_994d_9cc26b0dff47" Guid="5d3063fe-2155-4595-a52f-a88db21de271" Win64="no">
+                <File Name="tr.pak" Id="_locales_tr.pak_74838196_63f7_4752_994d_9cc26b0dff47" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\tr.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_uk.pak_f4ceb9b8_6811_454b_a10a_d1cf88b9d429" Guid="53ce539f-2c2b-4718-b053-5e616a70e6db" Win64="no">
+                <File Name="uk.pak" Id="_locales_uk.pak_f4ceb9b8_6811_454b_a10a_d1cf88b9d429" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\uk.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_vi.pak_790879a1_f104_45ea_87f5_232a97399fa3" Guid="fa5e9f23-b6eb-455b-8966-3a7a9a95dd48" Win64="no">
+                <File Name="vi.pak" Id="_locales_vi.pak_790879a1_f104_45ea_87f5_232a97399fa3" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\vi.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_zh_CN.pak_4d5e50f3_7258_4ce8_81d9_5572de705214" Guid="ab1151d2-4391-418d-9bb4-1bdde2cb38b7" Win64="no">
+                <File Name="zh-CN.pak" Id="_locales_zh_CN.pak_4d5e50f3_7258_4ce8_81d9_5572de705214" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\zh-CN.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_zh_TW.pak_cc99935f_e9a8_4285_b88d_fda666e3206f" Guid="9edef680-3445-4851-997b-9bbe24dc1bbe" Win64="no">
+                <File Name="zh-TW.pak" Id="_locales_zh_TW.pak_cc99935f_e9a8_4285_b88d_fda666e3206f" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\locales\zh-TW.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+            </Directory>
+            <Directory Id="_resources_4ea72c88_e203_46df_a83c_76b887409dd1" Name="resources">
+              <Directory Id="_resources_app_a807c4de_3a49_4368_a532_ff976a6b6831" Name="app">
+                <Directory Id="_resources_app_.github_a97a5170_a8e2_4a2c_a82d_4803bf418084" Name=".github">
+                  <Directory Id="_resources_app_.github_workflows_e153ce35_8028_4985_a787_a1ada0bd1270" Name="workflows">
+                    <Component Id="_buildApp.yml_3da77b1e_926c_4df7_bcd7_75c8a40b01f8" Guid="d1de329c-fb79-42ca-af97-31f71abc31ec" Win64="no">
+                      <File Name="buildApp.yml" Id="_buildApp.yml_3da77b1e_926c_4df7_bcd7_75c8a40b01f8" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\.github\workflows\buildApp.yml" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                  </Directory>
+                </Directory>
+
+                <Directory Id="_resources_app_node_modules_0223e857_41a1_4661_aa20_24e7b874ae6b" Name="node_modules">
+                  <Directory Id="__bitdisaster_becda488_78c6_4334_8219_b7310a6fb726" Name="@bitdisaster">
+
+                  </Directory>
+                  <Directory Id="__electron_a597ddda_09bd_4b04_bc4b_2b63a6726461" Name="@electron">
+
+                  </Directory>
+                  <Directory Id="__electron_forge_5146d1a9_9d1c_406a_8bc0_a4b799dadc10" Name="@electron-forge">
+
+                  </Directory>
+                  <Directory Id="_resources_app_node_modules__malept_830e16cc_cfe5_45b4_a0f1_82a51079fa50" Name="@malept">
+
+                  </Directory>
+                  <Directory Id="__sindresorhus_22af8fca_e88c_4d46_a63f_165db65983bb" Name="@sindresorhus">
+
+                  </Directory>
+                  <Directory Id="__szmarczak_7026e524_d8b4_44ac_a0b0_5ae0fc0c9ea4" Name="@szmarczak">
+
+                  </Directory>
+                  <Directory Id="_resources_app_node_modules__types_28e0740a_1e96_4d32_87a0_a0a91022fbc0" Name="@types">
+
+                  </Directory>
+                  <Directory Id="_resources_app_node_modules_axios_222111b5_68a6_4387_94c8_d951b120bdb1" Name="axios">
+                    <Directory Id="_dist_5de40bb2_4b45_4d04_986d_406b6b4779d0" Name="dist">
+                      <Component Id="_axios.js_75fc52f4_4141_424f_9aed_e07ad6752986" Guid="6193ae44-e2f4-49ff-94aa-28c3bee4bf30" Win64="no">
+                        <File Name="axios.js" Id="_axios.js_75fc52f4_4141_424f_9aed_e07ad6752986" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\dist\axios.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_axios.map_2ddffeb3_4786_40e0_b2d7_7c5300880104" Guid="56ff2af6-a63d-4555-8550-cdf496a58161" Win64="no">
+                        <File Name="axios.map" Id="_axios.map_2ddffeb3_4786_40e0_b2d7_7c5300880104" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\dist\axios.map" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_axios.min.js_073c88b7_d0e2_4089_bc4d_da20b2d53c52" Guid="bc12174b-4243-4cd7-9143-1148de48d0ea" Win64="no">
+                        <File Name="axios.min.js" Id="_axios.min.js_073c88b7_d0e2_4089_bc4d_da20b2d53c52" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\dist\axios.min.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_axios.min.map_92a980da_aa3f_4bc1_8d31_ce09c3dd78fe" Guid="e79f4028-61fc-4e19-8274-50c104813034" Win64="no">
+                        <File Name="axios.min.map" Id="_axios.min.map_92a980da_aa3f_4bc1_8d31_ce09c3dd78fe" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\dist\axios.min.map" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                    </Directory>
+                    <Directory Id="_lib_ae99287d_edf4_4f62_96d9_97f8e1f20280" Name="lib">
+                      <Directory Id="_adapters_16384723_50c2_458d_98c5_e64c3fbafcf8" Name="adapters">
+                        <Component Id="_README.md_e1e097d3_4b87_436a_a111_d22db7ea7e78" Guid="2d1aa6ae-851c-4c78-8bb9-cf4a59857aef" Win64="no">
+                          <File Name="README.md" Id="_README.md_e1e097d3_4b87_436a_a111_d22db7ea7e78" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\adapters\README.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_http.js_2a7534bc_58aa_41ee_978c_e470295a1831" Guid="355c15f4-82e9-4b83-9085-caabdee0e02e" Win64="no">
+                          <File Name="http.js" Id="_http.js_2a7534bc_58aa_41ee_978c_e470295a1831" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\adapters\http.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_xhr.js_b6dc3056_c17a_45ac_9b98_5d86ba3d2582" Guid="b038630b-2d6f-40f0-a2ac-dc0b53162d97" Win64="no">
+                          <File Name="xhr.js" Id="_xhr.js_b6dc3056_c17a_45ac_9b98_5d86ba3d2582" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\adapters\xhr.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                      </Directory>
+                      <Directory Id="_cancel_8c30314d_ccaf_407f_8e2c_c52c7621187f" Name="cancel">
+                        <Component Id="_Cancel.js_e2d1605d_d96e_4c6d_ae7b_a7d533859378" Guid="57668766-a319-4b37-9139-9750da446a6e" Win64="no">
+                          <File Name="Cancel.js" Id="_Cancel.js_e2d1605d_d96e_4c6d_ae7b_a7d533859378" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\cancel\Cancel.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_CancelToken.js_8c2fa13c_3c93_4a2f_adda_16e694421a52" Guid="012bb168-d8c6-4748-83a6-8b2dd4829c66" Win64="no">
+                          <File Name="CancelToken.js" Id="_CancelToken.js_8c2fa13c_3c93_4a2f_adda_16e694421a52" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\cancel\CancelToken.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_isCancel.js_1221e43a_5449_4301_a28f_edf413b1414d" Guid="2ec8ebe9-031b-444c-8f4d-00da2656bcdb" Win64="no">
+                          <File Name="isCancel.js" Id="_isCancel.js_1221e43a_5449_4301_a28f_edf413b1414d" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\cancel\isCancel.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                      </Directory>
+                      <Directory Id="_core_2a7070d9_cee4_4a85_b407_59bc350ed3c8" Name="core">
+                        <Component Id="_Axios.js_719dc0c5_c963_4280_9136_390e043905d0" Guid="8251d9fd-42db-4644-91f6-a56a65746fbc" Win64="no">
+                          <File Name="Axios.js" Id="_Axios.js_719dc0c5_c963_4280_9136_390e043905d0" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\core\Axios.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_InterceptorManager.js_de5e0139_ac99_4ff0_ae4b_1deffd6744cb" Guid="00f7bbf3-85c6-4bca-b107-71658b9ea493" Win64="no">
+                          <File Name="InterceptorManager.js" Id="_InterceptorManager.js_de5e0139_ac99_4ff0_ae4b_1deffd6744cb" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\core\InterceptorManager.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_README.md_4dcbbb27_0243_4eec_8b1d_227c0663f475" Guid="a6209693-6dd9-4b57-8260-515e13657902" Win64="no">
+                          <File Name="README.md" Id="_README.md_4dcbbb27_0243_4eec_8b1d_227c0663f475" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\core\README.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_buildFullPath.js_2acaea20_88c4_432e_98ea_7fc4f82e7a10" Guid="9888df1a-7398-4db1-a012-d6593cdcf979" Win64="no">
+                          <File Name="buildFullPath.js" Id="_buildFullPath.js_2acaea20_88c4_432e_98ea_7fc4f82e7a10" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\core\buildFullPath.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_createError.js_9f7d9061_7ce5_4582_bf63_b10892078907" Guid="8b0127c7-a85b-4239-bd4b-df0bdaf0bc03" Win64="no">
+                          <File Name="createError.js" Id="_createError.js_9f7d9061_7ce5_4582_bf63_b10892078907" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\core\createError.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_dispatchRequest.js_f0a8ed0a_b9fd_4bca_9347_6659895fd5eb" Guid="823535a8-20a1-496b-84f2-6cdbd5d6f6bf" Win64="no">
+                          <File Name="dispatchRequest.js" Id="_dispatchRequest.js_f0a8ed0a_b9fd_4bca_9347_6659895fd5eb" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\core\dispatchRequest.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_enhanceError.js_f9d43242_1149_4204_a011_5178ed447181" Guid="9a7bfb37-cd75-452b-a993-8fc6c3ccc84e" Win64="no">
+                          <File Name="enhanceError.js" Id="_enhanceError.js_f9d43242_1149_4204_a011_5178ed447181" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\core\enhanceError.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_mergeConfig.js_8ee7bcc2_2b53_4219_b6f3_58034ea9d8fe" Guid="b8512790-51a8-4623-a0fd-497d6fa6f88a" Win64="no">
+                          <File Name="mergeConfig.js" Id="_mergeConfig.js_8ee7bcc2_2b53_4219_b6f3_58034ea9d8fe" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\core\mergeConfig.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_settle.js_a1fe0d22_36ef_4c53_a60c_0407fa40f463" Guid="c23aa832-1b37-4a27-ac7a-029f23d6d4a0" Win64="no">
+                          <File Name="settle.js" Id="_settle.js_a1fe0d22_36ef_4c53_a60c_0407fa40f463" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\core\settle.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_transformData.js_bde36920_8989_473a_a23b_caac1333e8c7" Guid="8d21efd7-56c2-45d4-919c-6c7b093b2c58" Win64="no">
+                          <File Name="transformData.js" Id="_transformData.js_bde36920_8989_473a_a23b_caac1333e8c7" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\core\transformData.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                      </Directory>
+                      <Directory Id="_helpers_11d0c9fa_02cc_4fdf_a0c8_2fcd78b020f1" Name="helpers">
+                        <Component Id="_README.md_93d6a3ec_e0e9_4ed1_bac5_9eb3a19867f9" Guid="caa75d2e-4b94-43d8-9203-dfc16a1e635e" Win64="no">
+                          <File Name="README.md" Id="_README.md_93d6a3ec_e0e9_4ed1_bac5_9eb3a19867f9" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\helpers\README.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_bind.js_4030398a_d901_4acd_bf1b_6059135f8834" Guid="4a0c1656-ed87-4f29-b9c8-e11675652537" Win64="no">
+                          <File Name="bind.js" Id="_bind.js_4030398a_d901_4acd_bf1b_6059135f8834" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\helpers\bind.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_buildURL.js_ac2d163b_449b_455d_906e_6dfc54819253" Guid="57e118e2-bf66-4540-89be-d8beb3ee3c0d" Win64="no">
+                          <File Name="buildURL.js" Id="_buildURL.js_ac2d163b_449b_455d_906e_6dfc54819253" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\helpers\buildURL.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_combineURLs.js_c601dd76_14ca_4e1e_babe_6f0fcf1408c5" Guid="ea7559a0-71e5-4eca-83a4-ec036365b56c" Win64="no">
+                          <File Name="combineURLs.js" Id="_combineURLs.js_c601dd76_14ca_4e1e_babe_6f0fcf1408c5" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\helpers\combineURLs.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_cookies.js_07905b88_e7af_41d9_a5ee_6a99fd7f0dc8" Guid="82c99698-05e1-47fa-a122-da85b35413ba" Win64="no">
+                          <File Name="cookies.js" Id="_cookies.js_07905b88_e7af_41d9_a5ee_6a99fd7f0dc8" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\helpers\cookies.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_deprecatedMethod.js_d87aa244_014e_4a67_a4d6_ad799b880489" Guid="64810b9b-992b-4e85-ad7d-46a20b867948" Win64="no">
+                          <File Name="deprecatedMethod.js" Id="_deprecatedMethod.js_d87aa244_014e_4a67_a4d6_ad799b880489" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\helpers\deprecatedMethod.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_isAbsoluteURL.js_a870573e_165d_4944_a777_1657d5e1bae9" Guid="00b891d8-d803-4bb7-b38d-180eb65c592f" Win64="no">
+                          <File Name="isAbsoluteURL.js" Id="_isAbsoluteURL.js_a870573e_165d_4944_a777_1657d5e1bae9" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\helpers\isAbsoluteURL.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_isAxiosError.js_fda277e8_54e0_4a31_86d3_59cd9070a3a7" Guid="40e30d38-f21e-45cf-afeb-59a5af4b9cf1" Win64="no">
+                          <File Name="isAxiosError.js" Id="_isAxiosError.js_fda277e8_54e0_4a31_86d3_59cd9070a3a7" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\helpers\isAxiosError.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_isURLSameOrigin.js_37f64795_605b_4345_8f75_9ac0a4650c57" Guid="537edcf6-bee9-493b-a742-fdbb839e613c" Win64="no">
+                          <File Name="isURLSameOrigin.js" Id="_isURLSameOrigin.js_37f64795_605b_4345_8f75_9ac0a4650c57" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\helpers\isURLSameOrigin.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_normalizeHeaderName.js_affd5084_d358_4614_878d_2b003a5652dc" Guid="455eb8f3-0c2d-4750-a15b-cbcbd56886ef" Win64="no">
+                          <File Name="normalizeHeaderName.js" Id="_normalizeHeaderName.js_affd5084_d358_4614_878d_2b003a5652dc" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\helpers\normalizeHeaderName.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_parseHeaders.js_ff5599f1_23c0_4cdf_8284_d885bc13f6d9" Guid="ed4a254b-960e-4f79-bd5a-be19a09b627e" Win64="no">
+                          <File Name="parseHeaders.js" Id="_parseHeaders.js_ff5599f1_23c0_4cdf_8284_d885bc13f6d9" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\helpers\parseHeaders.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_spread.js_4e2de013_6fb2_41b2_9101_176b510b718a" Guid="a2cd9d74-152b-4ea6-a052-cb6d93001adb" Win64="no">
+                          <File Name="spread.js" Id="_spread.js_4e2de013_6fb2_41b2_9101_176b510b718a" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\helpers\spread.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                      </Directory>                      <Component Id="_axios.js_4e0a1068_3c8a_4409_b2cc_46216874b766" Guid="5db09010-3f17-4171-9701-9938e050610e" Win64="no">
+                        <File Name="axios.js" Id="_axios.js_4e0a1068_3c8a_4409_b2cc_46216874b766" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\axios.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_defaults.js_2756c467_d6fc_4652_9a0d_5289c6ca7a05" Guid="8f89fbf1-b09a-4051-82da-24abb3a74667" Win64="no">
+                        <File Name="defaults.js" Id="_defaults.js_2756c467_d6fc_4652_9a0d_5289c6ca7a05" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\defaults.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_utils.js_f9537a7a_89e9_4c74_ad1e_2cb399505620" Guid="fa1a1734-e804-4bb9-bb7b-ccb84922a270" Win64="no">
+                        <File Name="utils.js" Id="_utils.js_f9537a7a_89e9_4c74_ad1e_2cb399505620" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\lib\utils.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                    </Directory>
+                    <Component Id="_CHANGELOG.md_8dcba1a7_641f_4aae_a45e_e6be012d465f" Guid="a458888b-8465-48d1-894a-53b60066af8f" Win64="no">
+                      <File Name="CHANGELOG.md" Id="_CHANGELOG.md_8dcba1a7_641f_4aae_a45e_e6be012d465f" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\CHANGELOG.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_LICENSE_7abdc170_6529_4177_b7e8_f17fb2030485" Guid="5535a052-0a6f-44ef-85f0-2233aee08874" Win64="no">
+                      <File Name="LICENSE" Id="_LICENSE_7abdc170_6529_4177_b7e8_f17fb2030485" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\LICENSE" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_README.md_2a46de26_1e8b_4fe4_b28c_8ca02aa3a5b9" Guid="f9865bbd-c9e1-4b43-9e0c-421a5004eb7a" Win64="no">
+                      <File Name="README.md" Id="_README.md_2a46de26_1e8b_4fe4_b28c_8ca02aa3a5b9" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\README.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_UPGRADE_GUIDE.md_954ec6e2_d3ee_4c61_ac01_c09d42bfcc50" Guid="106f84a7-354e-4580-b183-52078e175d10" Win64="no">
+                      <File Name="UPGRADE_GUIDE.md" Id="_UPGRADE_GUIDE.md_954ec6e2_d3ee_4c61_ac01_c09d42bfcc50" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\UPGRADE_GUIDE.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_index.d.ts_518e63fd_d4c3_4bdc_8651_746154ebb18d" Guid="cb4ea253-19a4-47da-8470-8d67e91bdf91" Win64="no">
+                      <File Name="index.d.ts" Id="_index.d.ts_518e63fd_d4c3_4bdc_8651_746154ebb18d" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\index.d.ts" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_index.js_695c23ab_7f0c_48d0_b304_d5ef51d3b368" Guid="e600483a-9a47-4ded-9427-14004052d662" Win64="no">
+                      <File Name="index.js" Id="_index.js_695c23ab_7f0c_48d0_b304_d5ef51d3b368" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\index.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_package.json_35fc9840_a51c_4e93_a508_3b4c30416027" Guid="b85a3ff0-a1fb-4aaf-b63c-866ca8d5ed88" Win64="no">
+                      <File Name="package.json" Id="_package.json_35fc9840_a51c_4e93_a508_3b4c30416027" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\axios\package.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                  </Directory>
+
+                  <Directory Id="_resources_app_node_modules_debug_769e692b_4a47_44b8_9ca4_bcbaf63e45f7" Name="debug">
+                    <Directory Id="_src_85ab81e7_7ef3_4032_926a_21e766e71e52" Name="src">
+                      <Component Id="_browser.js_f2997255_6d5c_439f_91d5_9503e641dcf8" Guid="5a6780ee-23c4-462a-8552-4dab10413a3e" Win64="no">
+                        <File Name="browser.js" Id="_browser.js_f2997255_6d5c_439f_91d5_9503e641dcf8" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\src\browser.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_debug.js_2ba23fd9_5b5a_40d3_bf1f_e9528ec62ee5" Guid="407d10e4-ca7b-4e20-93b0-c1da24d334d5" Win64="no">
+                        <File Name="debug.js" Id="_debug.js_2ba23fd9_5b5a_40d3_bf1f_e9528ec62ee5" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\src\debug.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_index.js_b9d4bcaa_7c26_49c7_ab8f_ce93e781cd1c" Guid="cf154ce0-9245-4291-afb1-bc93f5a466d6" Win64="no">
+                        <File Name="index.js" Id="_index.js_b9d4bcaa_7c26_49c7_ab8f_ce93e781cd1c" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\src\index.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_inspector_log.js_9bf48061_bf07_462c_94b9_1df1c7a612f5" Guid="d77fc8e2-c7cc-474a-a3b3-cf9f44b93026" Win64="no">
+                        <File Name="inspector-log.js" Id="_inspector_log.js_9bf48061_bf07_462c_94b9_1df1c7a612f5" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\src\inspector-log.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_node.js_3a7cd3e0_8e92_4a59_88e4_9160253b3960" Guid="1774378e-6558-4ab7-9305-d3a687beb25d" Win64="no">
+                        <File Name="node.js" Id="_node.js_3a7cd3e0_8e92_4a59_88e4_9160253b3960" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\src\node.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                    </Directory>                    <Component Id="_.coveralls.yml_da1b294a_821d_4cb4_8b85_0a0ceaa57dac" Guid="5045294e-0454-468c-9e41-211dae8b0f15" Win64="no">
+                      <File Name=".coveralls.yml" Id="_.coveralls.yml_da1b294a_821d_4cb4_8b85_0a0ceaa57dac" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\.coveralls.yml" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_.eslintrc_aebee709_0351_4ffa_814a_a7425e87a2a5" Guid="26efeab9-6f28-4553-92ef-e8f400cdc1da" Win64="no">
+                      <File Name=".eslintrc" Id="_.eslintrc_aebee709_0351_4ffa_814a_a7425e87a2a5" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\.eslintrc" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_.npmignore_4dfe1edd_09f8_48ee_9adb_6e76c98c3f16" Guid="0dfc9166-e2d2-42a0-b894-b4cf6e3df09f" Win64="no">
+                      <File Name=".npmignore" Id="_.npmignore_4dfe1edd_09f8_48ee_9adb_6e76c98c3f16" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\.npmignore" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_.travis.yml_8100e983_67f3_492c_924d_b34dc8a53b40" Guid="dfc0885f-e58f-496e-af73-2434a7a392a4" Win64="no">
+                      <File Name=".travis.yml" Id="_.travis.yml_8100e983_67f3_492c_924d_b34dc8a53b40" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\.travis.yml" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_CHANGELOG.md_57033caf_f97a_4dba_a2fb_bbe04920816d" Guid="d30f93ab-b533-479c-9869-31e1d941dade" Win64="no">
+                      <File Name="CHANGELOG.md" Id="_CHANGELOG.md_57033caf_f97a_4dba_a2fb_bbe04920816d" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\CHANGELOG.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_LICENSE_76d11ae3_f316_4182_9341_361c737363ce" Guid="caa82d83-ed49-49f7-96d0-c0a5f3b30985" Win64="no">
+                      <File Name="LICENSE" Id="_LICENSE_76d11ae3_f316_4182_9341_361c737363ce" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\LICENSE" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_Makefile_0471b1ff_4f76_482b_b590_85cda5a2b210" Guid="cb659a33-98e1-4021-aa18-b5ffa1d2c62e" Win64="no">
+                      <File Name="Makefile" Id="_Makefile_0471b1ff_4f76_482b_b590_85cda5a2b210" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\Makefile" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_README.md_77176094_3cb3_4e4d_8464_822032b5676b" Guid="663af5f8-de24-42d5-acf2-516d831adc21" Win64="no">
+                      <File Name="README.md" Id="_README.md_77176094_3cb3_4e4d_8464_822032b5676b" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\README.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_component.json_7bd55d24_e00c_49b9_8cfb_136dc4038869" Guid="b5423abe-ad3d-44b8-ac0e-e7577b56d402" Win64="no">
+                      <File Name="component.json" Id="_component.json_7bd55d24_e00c_49b9_8cfb_136dc4038869" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\component.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_karma.conf.js_83095f69_b23a_4292_8f3d_13bec0190408" Guid="c87fa8a2-a352-45bc-886b-28c9635b37d4" Win64="no">
+                      <File Name="karma.conf.js" Id="_karma.conf.js_83095f69_b23a_4292_8f3d_13bec0190408" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\karma.conf.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_node.js_35fbadc2_db78_4184_bb71_3c687d156431" Guid="fc48dbd4-f54b-425b-b56e-e0e1a85635c3" Win64="no">
+                      <File Name="node.js" Id="_node.js_35fbadc2_db78_4184_bb71_3c687d156431" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\node.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_package.json_9dc86c47_e84d_41d1_a469_0dd662361d1f" Guid="87d14340-aeea-4921-a856-dce2bc79c493" Win64="no">
+                      <File Name="package.json" Id="_package.json_9dc86c47_e84d_41d1_a469_0dd662361d1f" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\debug\package.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                  </Directory>
+
+                  <Directory Id="_electron_is_dev_9f5333a9_a9d4_4b86_888a_ba3990b59b4c" Name="electron-is-dev">
+                    <Component Id="_index.js_0db4e792_4c00_49d2_bfe5_52a3199ae01d" Guid="13b827b9-506d-4238-93cb-dfb658f384b3" Win64="no">
+                      <File Name="index.js" Id="_index.js_0db4e792_4c00_49d2_bfe5_52a3199ae01d" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-is-dev\index.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_license_acfbf79d_9686_4e2a_a148_844ee2919621" Guid="a8f935b5-5488-4322-8cde-5cf46f958145" Win64="no">
+                      <File Name="license" Id="_license_acfbf79d_9686_4e2a_a148_844ee2919621" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-is-dev\license" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_package.json_49f5ac24_0cdb_4c75_9125_bb0019e01c0c" Guid="b8a92799-6ce9-4f3a-abcc-d4b72b471b1c" Win64="no">
+                      <File Name="package.json" Id="_package.json_49f5ac24_0cdb_4c75_9125_bb0019e01c0c" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-is-dev\package.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_readme.md_7f24cf64_7b51_4383_897b_6620d495d025" Guid="96516c05-d0e9-4eab-86fb-163eeb09ebdb" Win64="no">
+                      <File Name="readme.md" Id="_readme.md_7f24cf64_7b51_4383_897b_6620d495d025" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-is-dev\readme.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                  </Directory>
+                  <Directory Id="_electron_squirrel_startup_cc96041a_c78c_49e4_bb8a_cc2fb5f8e9be" Name="electron-squirrel-startup">
+                    <Directory Id="_test_63af4643_a885_4683_850f_253846fe8ea4" Name="test">
+                      <Component Id="_index.test.js_ce399cad_35b5_4e11_bb4c_bfe0cd2ed510" Guid="4dc68268-18cf-443d-aca7-4c2d2acc3618" Win64="no">
+                        <File Name="index.test.js" Id="_index.test.js_ce399cad_35b5_4e11_bb4c_bfe0cd2ed510" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-squirrel-startup\test\index.test.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_mocha.opts_1eac59cf_ef0e_4dc5_8dc3_413e1b152cc7" Guid="07bc6b3c-73d7-4454-854f-fba2a91d49d0" Win64="no">
+                        <File Name="mocha.opts" Id="_mocha.opts_1eac59cf_ef0e_4dc5_8dc3_413e1b152cc7" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-squirrel-startup\test\mocha.opts" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                    </Directory>                    <Component Id="_.eslintrc_690ae4f2_4710_4972_ba3c_e5db63cf71d5" Guid="9272f2ee-9679-4af0-bd93-9acda4f50014" Win64="no">
+                      <File Name=".eslintrc" Id="_.eslintrc_690ae4f2_4710_4972_ba3c_e5db63cf71d5" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-squirrel-startup\.eslintrc" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_.jsfmtrc_7c5f0833_8bbb_4698_9a1b_2be2c0178b93" Guid="9ec620e3-e22d-44a6-a782-589c5d32372f" Win64="no">
+                      <File Name=".jsfmtrc" Id="_.jsfmtrc_7c5f0833_8bbb_4698_9a1b_2be2c0178b93" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-squirrel-startup\.jsfmtrc" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_.npmignore_18e49a3d_c9ee_472b_9d47_fb8090e5e7c6" Guid="df323a13-10bd-4957-90b1-c514f10d5aa3" Win64="no">
+                      <File Name=".npmignore" Id="_.npmignore_18e49a3d_c9ee_472b_9d47_fb8090e5e7c6" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-squirrel-startup\.npmignore" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_.travis.yml_b2c07132_8540_40f7_9a45_f755463f23f2" Guid="6731d73a-ff92-42a7-8c38-532505688af5" Win64="no">
+                      <File Name=".travis.yml" Id="_.travis.yml_b2c07132_8540_40f7_9a45_f755463f23f2" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-squirrel-startup\.travis.yml" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_LICENSE_ba65d9a8_e11d_4f90_9fb8_4e96dd6bb144" Guid="57642682-a098-41f0-9092-d66da8e59f6b" Win64="no">
+                      <File Name="LICENSE" Id="_LICENSE_ba65d9a8_e11d_4f90_9fb8_4e96dd6bb144" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-squirrel-startup\LICENSE" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_README.md_fd22f356_51c1_4025_965e_72e8f833d230" Guid="8578ac00-935f-4f63-b636-7e8dc91e7738" Win64="no">
+                      <File Name="README.md" Id="_README.md_fd22f356_51c1_4025_965e_72e8f833d230" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-squirrel-startup\README.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_appveyor.yml_94cd5b07_a9e5_4c1d_a7df_b4cd5ac5dae3" Guid="592e5826-e783-4236-91c3-037599e1a3d0" Win64="no">
+                      <File Name="appveyor.yml" Id="_appveyor.yml_94cd5b07_a9e5_4c1d_a7df_b4cd5ac5dae3" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-squirrel-startup\appveyor.yml" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_index.js_bb23fef2_9440_4ee0_92c9_42e3bc6be498" Guid="2343dae2-ffef-4b65-b21c-d164019fda51" Win64="no">
+                      <File Name="index.js" Id="_index.js_bb23fef2_9440_4ee0_92c9_42e3bc6be498" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-squirrel-startup\index.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_package.json_f8b8f337_2c3b_47ab_8a7b_e67d971f1336" Guid="1d2ce8c4-8364-41e7-ba78-fc1e4962de35" Win64="no">
+                      <File Name="package.json" Id="_package.json_f8b8f337_2c3b_47ab_8a7b_e67d971f1336" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\electron-squirrel-startup\package.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                  </Directory>
+
+                  <Directory Id="_exe_icon_extractor_0d46f8f9_d273_4b67_99c0_f499ce718fea" Name="exe-icon-extractor">
+                    <Directory Id="_11.2.0_84e010b1_d810_47e9_b80e_5102b7b10817" Name="11.2.0">
+                      <Directory Id="_arm64_caf9870a_8193_472b_9046_629d707456aa" Name="arm64">
+                        <Component Id="_node.lib_bb241705_ecc1_4d58_8ba1_8af1091f75fb" Guid="e83829ad-979b-4b28-a0e8-e7107ceebcd9" Win64="no">
+                          <File Name="node.lib" Id="_node.lib_bb241705_ecc1_4d58_8ba1_8af1091f75fb" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\arm64\node.lib" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                      </Directory>
+                      <Directory Id="_ia32_5d13d7cb_cd62_470d_b932_e8fca96e431d" Name="ia32">
+                        <Component Id="_node.lib_61164264_5394_4b9a_8034_98c16ca21a40" Guid="88950ac6-b600-408b-bfda-26af44cb766c" Win64="no">
+                          <File Name="node.lib" Id="_node.lib_61164264_5394_4b9a_8034_98c16ca21a40" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\ia32\node.lib" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                      </Directory>
+                      <Directory Id="_include_eb47b2b4_b74f_4ba3_acbb_f85a99269566" Name="include">
+                        <Directory Id="_node_80d7f965_16a7_47dd_b8ff_e4d6065593af" Name="node">
+                          <Directory Id="_cppgc_7fbeab2b_cb71_4563_a455_3395a124a916" Name="cppgc">
+                            <Directory Id="_internal_fae2b29e_a9e4_442e_9d61_9eda78d026d9" Name="internal">
+                              <Component Id="_api_constants.h_7569eec4_4727_4110_86b3_5c769fa4de8c" Guid="5d2764ea-d64f-4825-8201-24a0a4198448" Win64="no">
+                                <File Name="api-constants.h" Id="_api_constants.h_7569eec4_4727_4110_86b3_5c769fa4de8c" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\internal\api-constants.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_atomic_entry_flag.h_29f73cca_22b0_4694_822e_1b89fa0e84ba" Guid="37ceb8ae-603a-46d0-854c-0d204fbc6d19" Win64="no">
+                                <File Name="atomic-entry-flag.h" Id="_atomic_entry_flag.h_29f73cca_22b0_4694_822e_1b89fa0e84ba" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\internal\atomic-entry-flag.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_caged_heap_local_data.h_4be65be6_8454_4c5d_94fb_d8c843e19a54" Guid="b08d66fa-47ec-401a-975a-b2c7d2077756" Win64="no">
+                                <File Name="caged-heap-local-data.h" Id="_caged_heap_local_data.h_4be65be6_8454_4c5d_94fb_d8c843e19a54" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\internal\caged-heap-local-data.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_compiler_specific.h_65d9ac13_2da1_4302_8bb8_05a018192704" Guid="cc9ace69-9470-4e96-a0c0-31c944a9de86" Win64="no">
+                                <File Name="compiler-specific.h" Id="_compiler_specific.h_65d9ac13_2da1_4302_8bb8_05a018192704" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\internal\compiler-specific.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_finalizer_trait.h_c8d8b09f_cc08_4779_9262_5e98095e5493" Guid="1c311785-d9fb-4f46-912e-54d2c7234144" Win64="no">
+                                <File Name="finalizer-trait.h" Id="_finalizer_trait.h_c8d8b09f_cc08_4779_9262_5e98095e5493" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\internal\finalizer-trait.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_gc_info.h_1fc85e47_f015_43a4_8674_6c20b3f2977a" Guid="b2d765df-72b2-4052-97f7-1920fe0d343f" Win64="no">
+                                <File Name="gc-info.h" Id="_gc_info.h_1fc85e47_f015_43a4_8674_6c20b3f2977a" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\internal\gc-info.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_logging.h_12a6622a_5f0f_4403_b605_b1c0c7161fe0" Guid="395b4906-bbeb-4678-bdf6-64802a1de362" Win64="no">
+                                <File Name="logging.h" Id="_logging.h_12a6622a_5f0f_4403_b605_b1c0c7161fe0" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\internal\logging.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_persistent_node.h_68fed289_48fa_49af_b51c_851baff5cb9d" Guid="7f540611-8626-492c-99fd-c7643ef4e626" Win64="no">
+                                <File Name="persistent-node.h" Id="_persistent_node.h_68fed289_48fa_49af_b51c_851baff5cb9d" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\internal\persistent-node.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_pointer_policies.h_97d44de0_81f8_489c_9b54_19fc90c988c9" Guid="ec0e0397-90c9-4668-b9b9-4d0bad2ed780" Win64="no">
+                                <File Name="pointer-policies.h" Id="_pointer_policies.h_97d44de0_81f8_489c_9b54_19fc90c988c9" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\internal\pointer-policies.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_prefinalizer_handler.h_679b5378_fd98_480f_a776_cf72178bb747" Guid="d54b67a6-d51c-4327-ba10-7b9be93b7311" Win64="no">
+                                <File Name="prefinalizer-handler.h" Id="_prefinalizer_handler.h_679b5378_fd98_480f_a776_cf72178bb747" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\internal\prefinalizer-handler.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_process_heap.h_8c8302f8_18d4_4f0e_b779_0a67488906f6" Guid="42f2414a-74e4-4960-8e59-c729c5f0016e" Win64="no">
+                                <File Name="process-heap.h" Id="_process_heap.h_8c8302f8_18d4_4f0e_b779_0a67488906f6" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\internal\process-heap.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_write_barrier.h_a1af0ae1_f961_4765_b632_92286bcb32b2" Guid="3a7430bc-650a-4882-8bcb-5033003b20e9" Win64="no">
+                                <File Name="write-barrier.h" Id="_write_barrier.h_a1af0ae1_f961_4765_b632_92286bcb32b2" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\internal\write-barrier.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                            </Directory>                            <Component Id="_allocation.h_6563dd66_b5bc_4254_8a82_4a07ee8ad633" Guid="987009ec-b599-4b6a-a4e4-6b83d3c2a488" Win64="no">
+                              <File Name="allocation.h" Id="_allocation.h_6563dd66_b5bc_4254_8a82_4a07ee8ad633" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\allocation.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_common.h_6f6b6f6b_0c89_43ae_943f_733b8e80c49c" Guid="812566c2-4df7-4bed-8755-ef5c63595d7c" Win64="no">
+                              <File Name="common.h" Id="_common.h_6f6b6f6b_0c89_43ae_943f_733b8e80c49c" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\common.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_custom_space.h_50dfdad9_b7cc_4614_919b_3021bfd718dd" Guid="4899ac0b-b888-45d0-a030-c8be76cca8f4" Win64="no">
+                              <File Name="custom-space.h" Id="_custom_space.h_50dfdad9_b7cc_4614_919b_3021bfd718dd" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\custom-space.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_garbage_collected.h_a369c6a1_5d74_402e_8c35_cddf8e428b35" Guid="154e285a-1cba-4d77-9c5a-1a0b174ab0f5" Win64="no">
+                              <File Name="garbage-collected.h" Id="_garbage_collected.h_a369c6a1_5d74_402e_8c35_cddf8e428b35" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\garbage-collected.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_heap.h_49cdea52_193a_40bf_aa36_35080e9de044" Guid="3bce373e-7995-4022-9e8a-61d382d730f8" Win64="no">
+                              <File Name="heap.h" Id="_heap.h_49cdea52_193a_40bf_aa36_35080e9de044" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\heap.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_liveness_broker.h_db017c96_8e01_4fe2_83a8_4726dc3b3e5b" Guid="60ab9356-7c48-4319-8314-fd81ddc66aae" Win64="no">
+                              <File Name="liveness-broker.h" Id="_liveness_broker.h_db017c96_8e01_4fe2_83a8_4726dc3b3e5b" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\liveness-broker.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_macros.h_2427a2f0_93ab_421e_89b4_1a33b1892921" Guid="990b390e-1aa4-41ea-98be-87d8afd596ae" Win64="no">
+                              <File Name="macros.h" Id="_macros.h_2427a2f0_93ab_421e_89b4_1a33b1892921" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\macros.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_member.h_d3d50a04_08b9_41c9_9d7e_8f8d0d261534" Guid="10defa9d-3eee-4415-8cec-1e531c7d02ae" Win64="no">
+                              <File Name="member.h" Id="_member.h_d3d50a04_08b9_41c9_9d7e_8f8d0d261534" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\member.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_persistent.h_99c596e3_35dc_439b_947f_5cf5799f8459" Guid="21bccb34-b0ee-4def-9a84-a42854faf307" Win64="no">
+                              <File Name="persistent.h" Id="_persistent.h_99c596e3_35dc_439b_947f_5cf5799f8459" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\persistent.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_platform.h_67ab0eec_f934_4ff9_a33d_f064ab6bf526" Guid="3cd13ecf-d923-4ca1-93b6-e4134b7138a8" Win64="no">
+                              <File Name="platform.h" Id="_platform.h_67ab0eec_f934_4ff9_a33d_f064ab6bf526" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\platform.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_prefinalizer.h_96fc736e_9bd6_401b_99dc_e75c6a5356a7" Guid="53d4a6d8-85bd-4319-bda1-31fba17ce113" Win64="no">
+                              <File Name="prefinalizer.h" Id="_prefinalizer.h_96fc736e_9bd6_401b_99dc_e75c6a5356a7" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\prefinalizer.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_source_location.h_c96f43bc_fafe_473e_86a5_47dc7f1f47a6" Guid="89d6b629-2ee6-4edf-944c-775b0b6f37fc" Win64="no">
+                              <File Name="source-location.h" Id="_source_location.h_c96f43bc_fafe_473e_86a5_47dc7f1f47a6" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\source-location.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_trace_trait.h_a2c23d3a_458a_4035_8e33_ef3d68617e08" Guid="b1bc333a-b56e-4c53-ad4b-7a7004540df2" Win64="no">
+                              <File Name="trace-trait.h" Id="_trace_trait.h_a2c23d3a_458a_4035_8e33_ef3d68617e08" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\trace-trait.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_type_traits.h_24040e84_f405_42c2_9777_22e753e4e259" Guid="7b54e1ca-0ab7-4f01-a6e6-db7b71417cee" Win64="no">
+                              <File Name="type-traits.h" Id="_type_traits.h_24040e84_f405_42c2_9777_22e753e4e259" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\type-traits.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_visitor.h_776860c7_318a_41b4_80f5_db0eda2d751e" Guid="30dcb4a6-8361-4ea8-8753-39798e660811" Win64="no">
+                              <File Name="visitor.h" Id="_visitor.h_776860c7_318a_41b4_80f5_db0eda2d751e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\cppgc\visitor.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                          </Directory>
+
+                          <Directory Id="_libplatform_66b493ac_b684_4238_9b48_3925d464dd38" Name="libplatform">
+                            <Component Id="_libplatform_export.h_e4193112_a8ef_4ca3_b1f6_a5abf5d0cb4a" Guid="353a3cec-920c-407e-b981-30bb0aa528ac" Win64="no">
+                              <File Name="libplatform-export.h" Id="_libplatform_export.h_e4193112_a8ef_4ca3_b1f6_a5abf5d0cb4a" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\libplatform\libplatform-export.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_libplatform.h_4996c381_dbf8_4ea6_93e9_16398a5497b5" Guid="fefe8d4c-93c1-4b03-9782-eb198a2b1d31" Win64="no">
+                              <File Name="libplatform.h" Id="_libplatform.h_4996c381_dbf8_4ea6_93e9_16398a5497b5" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\libplatform\libplatform.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_v8_tracing.h_45e68a85_c252_4e89_a4b2_4e717876ab95" Guid="33c00db1-c3b4-4bb2-8511-b7d4cb68def1" Win64="no">
+                              <File Name="v8-tracing.h" Id="_v8_tracing.h_45e68a85_c252_4e89_a4b2_4e717876ab95" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\libplatform\v8-tracing.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                          </Directory>
+                          <Directory Id="_uv_559c8f99_8709_4a60_b870_eee939eaa3f8" Name="uv">
+                            <Component Id="_aix.h_4162464f_4007_4326_9110_19dd5538d469" Guid="099be1f0-d06a-41af-8723-d585fbe8ce03" Win64="no">
+                              <File Name="aix.h" Id="_aix.h_4162464f_4007_4326_9110_19dd5538d469" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\aix.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_android_ifaddrs.h_ffaf2b7a_2da5_413d_b8ae_ecb33987c9c6" Guid="3d75f149-785e-43c7-9a21-bce8fbfbbba4" Win64="no">
+                              <File Name="android-ifaddrs.h" Id="_android_ifaddrs.h_ffaf2b7a_2da5_413d_b8ae_ecb33987c9c6" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\android-ifaddrs.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_bsd.h_44a68049_8881_49c1_857d_bb03715aa6d6" Guid="3e0e733a-29c3-457d-b7a2-357f5a4f14d3" Win64="no">
+                              <File Name="bsd.h" Id="_bsd.h_44a68049_8881_49c1_857d_bb03715aa6d6" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\bsd.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_darwin.h_3a48466d_0953_4837_b0f1_5412047478c6" Guid="6a796bf4-1068-472a-a869-2d58256fc865" Win64="no">
+                              <File Name="darwin.h" Id="_darwin.h_3a48466d_0953_4837_b0f1_5412047478c6" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\darwin.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_errno.h_ed2a11a0_f345_46eb_aefe_dd6bc36e3d9e" Guid="1c2a5326-63a7-42f9-b52b-573543ed6c89" Win64="no">
+                              <File Name="errno.h" Id="_errno.h_ed2a11a0_f345_46eb_aefe_dd6bc36e3d9e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\errno.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_linux.h_0058e88d_1de6_4930_bab2_f4f6d40ce917" Guid="e33b3b75-8e45-49ca-88f0-80d7ab82a000" Win64="no">
+                              <File Name="linux.h" Id="_linux.h_0058e88d_1de6_4930_bab2_f4f6d40ce917" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\linux.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_os390.h_a325c88a_d40e_4ded_92dc_722dd15bda35" Guid="f5d28e9d-35ee-47cb-bcd3-a5cd66c68d06" Win64="no">
+                              <File Name="os390.h" Id="_os390.h_a325c88a_d40e_4ded_92dc_722dd15bda35" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\os390.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_posix.h_6726ea4f_b817_4184_9a4d_392324ce0ad7" Guid="b1282332-1c3a-4d71-9dc0-8b28c33d0e49" Win64="no">
+                              <File Name="posix.h" Id="_posix.h_6726ea4f_b817_4184_9a4d_392324ce0ad7" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\posix.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_stdint_msvc2008.h_5b4c81ce_7aed_43df_bc93_1bfdd0890916" Guid="0fdaba41-edac-4721-98da-bfdc93208da6" Win64="no">
+                              <File Name="stdint-msvc2008.h" Id="_stdint_msvc2008.h_5b4c81ce_7aed_43df_bc93_1bfdd0890916" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\stdint-msvc2008.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_sunos.h_a18ec3fa_b435_41b6_8fac_c759fffca813" Guid="f9f66e7d-97ce-45c7-af69-e33339db67fb" Win64="no">
+                              <File Name="sunos.h" Id="_sunos.h_a18ec3fa_b435_41b6_8fac_c759fffca813" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\sunos.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_threadpool.h_d7ccc0b8_0ee7_468b_9c6e_6a92f4f1deec" Guid="2d97ad63-39fb-4c96-a356-eb1fdc8937c7" Win64="no">
+                              <File Name="threadpool.h" Id="_threadpool.h_d7ccc0b8_0ee7_468b_9c6e_6a92f4f1deec" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\threadpool.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_tree.h_23d4d4ec_5241_478b_bced_6c1843ec8217" Guid="5c3ecbe0-8f68-4ad4-ac96-fef7695eb0a5" Win64="no">
+                              <File Name="tree.h" Id="_tree.h_23d4d4ec_5241_478b_bced_6c1843ec8217" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\tree.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_unix.h_bcb52ccb_0079_42eb_9085_7c12af5e3c11" Guid="503d4202-b3b6-47dd-8a9a-9b1a8438083e" Win64="no">
+                              <File Name="unix.h" Id="_unix.h_bcb52ccb_0079_42eb_9085_7c12af5e3c11" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\unix.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_version.h_5c95b21a_afb0_47cf_9ba7_e96dd97dab3f" Guid="4a97511a-3c4a-42f0-964a-b1fc5a9fb9cb" Win64="no">
+                              <File Name="version.h" Id="_version.h_5c95b21a_afb0_47cf_9ba7_e96dd97dab3f" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\version.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_win.h_224e03ed_94c5_4592_805a_1855b5af6b3f" Guid="fc254a94-ed00-4a04-b948-5c02aba6ca04" Win64="no">
+                              <File Name="win.h" Id="_win.h_224e03ed_94c5_4592_805a_1855b5af6b3f" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv\win.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                          </Directory>                          <Component Id="_common.gypi_d2c28b03_40b8_49d6_99e7_a5d609eb9f66" Guid="50448939-5afa-41fa-a6e9-7284e7d7ae64" Win64="no">
+                            <File Name="common.gypi" Id="_common.gypi_d2c28b03_40b8_49d6_99e7_a5d609eb9f66" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\common.gypi" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_config.gypi_d8e12a07_ec7b_4e5d_bca9_389512595a3f" Guid="069eb445-d444-4cc0-95e8-667be7dcfb0b" Win64="no">
+                            <File Name="config.gypi" Id="_config.gypi_d8e12a07_ec7b_4e5d_bca9_389512595a3f" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\config.gypi" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_js_native_api.h_423ff5b2_e5eb_44c8_96a7_409f6fc43c79" Guid="863b29e8-50f1-4299-b9dc-9259ea1936c0" Win64="no">
+                            <File Name="js_native_api.h" Id="_js_native_api.h_423ff5b2_e5eb_44c8_96a7_409f6fc43c79" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\js_native_api.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_js_native_api_types.h_a49773ab_5d50_4f89_b8e1_73348ff56017" Guid="acfc8587-fd86-4571-9d06-c9c3b39065e1" Win64="no">
+                            <File Name="js_native_api_types.h" Id="_js_native_api_types.h_a49773ab_5d50_4f89_b8e1_73348ff56017" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\js_native_api_types.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_node.h_b152c90d_b435_4f91_88fa_8e4a15d05d2e" Guid="7206542a-799c-47ba-83c5-995e80e3b37e" Win64="no">
+                            <File Name="node.h" Id="_node.h_b152c90d_b435_4f91_88fa_8e4a15d05d2e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\node.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_node_api.h_c877edb6_2d80_457e_b40c_9d3f1c92161e" Guid="abc4366d-0927-415b-961f-bb79ab2cf702" Win64="no">
+                            <File Name="node_api.h" Id="_node_api.h_c877edb6_2d80_457e_b40c_9d3f1c92161e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\node_api.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_node_api_types.h_963646db_ddbe_407c_a11a_41743e2d0d16" Guid="29d81979-09a1-4199-bb78-2c57b631b09f" Win64="no">
+                            <File Name="node_api_types.h" Id="_node_api_types.h_963646db_ddbe_407c_a11a_41743e2d0d16" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\node_api_types.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_node_buffer.h_edd0f6cd_1a19_4e8a_b9a7_2fba6f53740b" Guid="1fb8045a-ff30-44cb-9eca-9179457be34e" Win64="no">
+                            <File Name="node_buffer.h" Id="_node_buffer.h_edd0f6cd_1a19_4e8a_b9a7_2fba6f53740b" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\node_buffer.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_node_object_wrap.h_982ff0c9_3d79_4fa2_85d0_0897cdb58cd0" Guid="540ed8a3-b3f6-426d-9854-10e3550ad384" Win64="no">
+                            <File Name="node_object_wrap.h" Id="_node_object_wrap.h_982ff0c9_3d79_4fa2_85d0_0897cdb58cd0" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\node_object_wrap.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_node_version.h_5c0a4285_f6da_48b6_b6ec_1829a711d4dd" Guid="7efdf942-6908-4387-b0d1-006f400199ee" Win64="no">
+                            <File Name="node_version.h" Id="_node_version.h_5c0a4285_f6da_48b6_b6ec_1829a711d4dd" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\node_version.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_uv.h_028a85a2_a2a6_4a92_835d_b79adbf2b113" Guid="a505d456-6c31-4573-aee8-2bdf7ebcccd5" Win64="no">
+                            <File Name="uv.h" Id="_uv.h_028a85a2_a2a6_4a92_835d_b79adbf2b113" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\uv.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_v8_cppgc.h_1af1c4d4_46e1_434b_9ca5_405425b509cd" Guid="cba8a2e5-b2ce-407c-85b3-064fb8d94fde" Win64="no">
+                            <File Name="v8-cppgc.h" Id="_v8_cppgc.h_1af1c4d4_46e1_434b_9ca5_405425b509cd" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\v8-cppgc.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_v8_fast_api_calls.h_2808f14b_535c_44d6_9751_da9a1a124158" Guid="94815dcd-16f3-4bcb-b5c0-b7a65943988e" Win64="no">
+                            <File Name="v8-fast-api-calls.h" Id="_v8_fast_api_calls.h_2808f14b_535c_44d6_9751_da9a1a124158" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\v8-fast-api-calls.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_v8_internal.h_61901d27_02ae_49d9_9e51_95d50f18c3fe" Guid="5964f33b-1597-4d7f-9d7a-22c01e4a04a3" Win64="no">
+                            <File Name="v8-internal.h" Id="_v8_internal.h_61901d27_02ae_49d9_9e51_95d50f18c3fe" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\v8-internal.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_v8_platform.h_abcf5c06_ab37_45b4_b554_8e529e483274" Guid="216244d4-c439-4fc1-80b3-c78bea4cc17e" Win64="no">
+                            <File Name="v8-platform.h" Id="_v8_platform.h_abcf5c06_ab37_45b4_b554_8e529e483274" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\v8-platform.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_v8_profiler.h_e95fb9b2_4202_4bc5_b912_c49e748d4b4b" Guid="91c26ba6-90c4-4bb7-933c-a8737897a0ba" Win64="no">
+                            <File Name="v8-profiler.h" Id="_v8_profiler.h_e95fb9b2_4202_4bc5_b912_c49e748d4b4b" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\v8-profiler.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_v8_util.h_f1a936cd_c1b9_4ca2_aba0_2eb879a8f6b7" Guid="772f8622-d5c8-4da1-835b-ce94e6b79a28" Win64="no">
+                            <File Name="v8-util.h" Id="_v8_util.h_f1a936cd_c1b9_4ca2_aba0_2eb879a8f6b7" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\v8-util.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_v8_value_serializer_version.h_dd297476_2ff0_4319_a9ac_d035ddd8c024" Guid="35e2d51b-b1cc-42b2-8360-89990e5af75d" Win64="no">
+                            <File Name="v8-value-serializer-version.h" Id="_v8_value_serializer_version.h_dd297476_2ff0_4319_a9ac_d035ddd8c024" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\v8-value-serializer-version.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_v8_version_string.h_b2b29cac_231a_4cb7_984b_5facf6da0e0c" Guid="6c4ad30b-f48b-4974-97a5-f18d135cbca0" Win64="no">
+                            <File Name="v8-version-string.h" Id="_v8_version_string.h_b2b29cac_231a_4cb7_984b_5facf6da0e0c" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\v8-version-string.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_v8_version.h_2a40985c_c7fa_4f7e_b346_0631a8861c15" Guid="88c11bec-b0e7-4de2-9f43-00f8ab301018" Win64="no">
+                            <File Name="v8-version.h" Id="_v8_version.h_2a40985c_c7fa_4f7e_b346_0631a8861c15" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\v8-version.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_v8_wasm_trap_handler_posix.h_18e58096_5310_4204_91d8_deb9ab5ef5f7" Guid="8af44cb1-40b2-4abf-97de-a3267f4f4c78" Win64="no">
+                            <File Name="v8-wasm-trap-handler-posix.h" Id="_v8_wasm_trap_handler_posix.h_18e58096_5310_4204_91d8_deb9ab5ef5f7" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\v8-wasm-trap-handler-posix.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_v8_wasm_trap_handler_win.h_3a707252_bfd2_4113_9a99_15c27fb294bc" Guid="99b388ac-435a-48f3-8800-3a8e05a70167" Win64="no">
+                            <File Name="v8-wasm-trap-handler-win.h" Id="_v8_wasm_trap_handler_win.h_3a707252_bfd2_4113_9a99_15c27fb294bc" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\v8-wasm-trap-handler-win.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_v8.h_765dc18d_7a3c_47d4_8d15_7b49b0e37a69" Guid="bf47cab8-dd87-4c1d-9705-9701fa9ce139" Win64="no">
+                            <File Name="v8.h" Id="_v8.h_765dc18d_7a3c_47d4_8d15_7b49b0e37a69" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\v8.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_v8config.h_0d6182be_bb11_4757_9a11_2e8bbd6ecd95" Guid="8aa728ee-c551-411c-95da-f6e1e5409fbc" Win64="no">
+                            <File Name="v8config.h" Id="_v8config.h_0d6182be_bb11_4757_9a11_2e8bbd6ecd95" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\v8config.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_zconf.h_ac9ed93d_9f68_4b23_99d1_ed80a786c78f" Guid="98648db6-b0f3-4487-a31b-407aabf7c0d2" Win64="no">
+                            <File Name="zconf.h" Id="_zconf.h_ac9ed93d_9f68_4b23_99d1_ed80a786c78f" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\zconf.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                          <Component Id="_zlib.h_9735e07c_da08_4b36_b658_1d897d8f1f38" Guid="9a190abd-952a-44b1-b438-3bdeef139b96" Win64="no">
+                            <File Name="zlib.h" Id="_zlib.h_9735e07c_da08_4b36_b658_1d897d8f1f38" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\include\node\zlib.h" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                          </Component>
+                        </Directory>
+
+                      </Directory>
+
+                      <Directory Id="_x64_9150cbc1_6a1d_4427_aea4_6d56f57d7f7b" Name="x64">
+                        <Component Id="_node.lib_1f382fa9_f136_4126_87c5_e54f70e306d3" Guid="23cc3f28-f798-4b91-ac84-07b935f64507" Win64="no">
+                          <File Name="node.lib" Id="_node.lib_1f382fa9_f136_4126_87c5_e54f70e306d3" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\x64\node.lib" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                      </Directory>                      <Component Id="_installVersion_47dcb471_8816_4bc8_9948_d3437a0af50b" Guid="95ac1a3f-ae76-4d0b-a503-bfb47979b9ef" Win64="no">
+                        <File Name="installVersion" Id="_installVersion_47dcb471_8816_4bc8_9948_d3437a0af50b" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\11.2.0\installVersion" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                    </Directory>
+
+                    <Directory Id="_bin_547dabd8_48dd_4fce_8847_eb0b3939d046" Name="bin">
+                      <Directory Id="_win32_x64_85_402bbb6f_a149_4227_a621_dc522e73d660" Name="win32-x64-85">
+                        <Component Id="_exe_icon_extractor.node_8ee37973_79de_4dfb_8bbd_c4b80e14d1fa" Guid="2794dbfb-b37c-448a-b857-8ed9c0714449" Win64="no">
+                          <File Name="exe-icon-extractor.node" Id="_exe_icon_extractor.node_8ee37973_79de_4dfb_8bbd_c4b80e14d1fa" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\bin\win32-x64-85\exe-icon-extractor.node" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                      </Directory>
+                    </Directory>
+
+                    <Directory Id="_build_748250d7_80db_4410_ba94_2c8692d2e0ff" Name="build">
+                      <Directory Id="_Release_91559b32_14fa_4fdd_9efa_fdd3394ce49a" Name="Release">
+                        <Directory Id="_obj_55350d0d_e502_4bf4_a5f2_c15eddddf199" Name="obj">
+                          <Directory Id="_module_a9193af2_c0f7_40c1_8547_6ddccac16426" Name="module">
+                            <Directory Id="_module.tlog_2bdad60c_f23c_4dba_9fe1_4e1d2660d1e1" Name="module.tlog">
+                              <Component Id="_CL.command.1.tlog_88f7eae7_a6cc_4556_9b94_ed985ebb6d85" Guid="91cec355-48b3-4f02-a5f7-1066e0461360" Win64="no">
+                                <File Name="CL.command.1.tlog" Id="_CL.command.1.tlog_88f7eae7_a6cc_4556_9b94_ed985ebb6d85" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\obj\module\module.tlog\CL.command.1.tlog" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_CL.read.1.tlog_205b3d23_b1bc_46bd_a766_15b72012fb09" Guid="85b1706d-1738-43f4-a636-2f1ae7b8e1bd" Win64="no">
+                                <File Name="CL.read.1.tlog" Id="_CL.read.1.tlog_205b3d23_b1bc_46bd_a766_15b72012fb09" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\obj\module\module.tlog\CL.read.1.tlog" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_CL.write.1.tlog_db5d5d5b_00ed_49e8_a768_1f2c5463e966" Guid="3ebe1e11-160b-43e2-bbf6-97e009bdb5ff" Win64="no">
+                                <File Name="CL.write.1.tlog" Id="_CL.write.1.tlog_db5d5d5b_00ed_49e8_a768_1f2c5463e966" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\obj\module\module.tlog\CL.write.1.tlog" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_link.command.1.tlog_d8307135_57b4_4323_984f_4713e4d896c0" Guid="f5fc52ae-87cc-4c0e-8b69-5ede1a2857db" Win64="no">
+                                <File Name="link.command.1.tlog" Id="_link.command.1.tlog_d8307135_57b4_4323_984f_4713e4d896c0" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\obj\module\module.tlog\link.command.1.tlog" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_link.read.1.tlog_f30d3ebd_dfaf_4ffd_9c33_78f8c89cf460" Guid="50d86c2b-2ca8-4e50-86e7-f77493c58c34" Win64="no">
+                                <File Name="link.read.1.tlog" Id="_link.read.1.tlog_f30d3ebd_dfaf_4ffd_9c33_78f8c89cf460" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\obj\module\module.tlog\link.read.1.tlog" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_link.write.1.tlog_01bb0d54_905f_47d8_97a1_1c9e7373f8bb" Guid="f2e73da4-a175-4306-98f4-d312ac309ef0" Win64="no">
+                                <File Name="link.write.1.tlog" Id="_link.write.1.tlog_01bb0d54_905f_47d8_97a1_1c9e7373f8bb" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\obj\module\module.tlog\link.write.1.tlog" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_module.lastbuildstate_8d4d2341_3d78_4d00_a250_8c0ac9192ffd" Guid="0253dae9-55a4-44e9-9bf1-3f0da8c64939" Win64="no">
+                                <File Name="module.lastbuildstate" Id="_module.lastbuildstate_8d4d2341_3d78_4d00_a250_8c0ac9192ffd" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\obj\module\module.tlog\module.lastbuildstate" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                              <Component Id="_module.write.1u.tlog_d7e41995_3548_447a_859a_a729db3a11c6" Guid="9a576480-6681-41a2-b9a2-f72f61704bd9" Win64="no">
+                                <File Name="module.write.1u.tlog" Id="_module.write.1u.tlog_d7e41995_3548_447a_859a_a729db3a11c6" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\obj\module\module.tlog\module.write.1u.tlog" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                            </Directory>
+                            <Directory Id="_src_3a552dd2_99c5_4ecb_92e0_890b37228286" Name="src">
+                              <Component Id="_module.obj_b592bacc_7822_4304_9f4d_045f755fde19" Guid="a695183c-2f39-4dff-88e9-e42ad13b09e2" Win64="no">
+                                <File Name="module.obj" Id="_module.obj_b592bacc_7822_4304_9f4d_045f755fde19" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\obj\module\src\module.obj" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                              </Component>
+                            </Directory>                            <Component Id="_module.node.recipe_28dfb2fc_8d93_4d40_908d_db4fe643f261" Guid="d027754d-b74b-4d1c-871d-e5aede608ed8" Win64="no">
+                              <File Name="module.node.recipe" Id="_module.node.recipe_28dfb2fc_8d93_4d40_908d_db4fe643f261" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\obj\module\module.node.recipe" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                            <Component Id="_win_delay_load_hook.obj_e556e041_28fd_468d_8e0a_d1fe7b7888be" Guid="994a4cb9-6a66-46b2-ade9-347c21b4677f" Win64="no">
+                              <File Name="win_delay_load_hook.obj" Id="_win_delay_load_hook.obj_e556e041_28fd_468d_8e0a_d1fe7b7888be" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\obj\module\win_delay_load_hook.obj" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                            </Component>
+                          </Directory>
+
+                        </Directory>
+                        <Component Id="_.forge_meta_40cf4983_f877_4796_b3d4_07a1e3c46a9a" Guid="73c44b13-dd7f-471f-91a1-a0007fb9312f" Win64="no">
+                          <File Name=".forge-meta" Id="_.forge_meta_40cf4983_f877_4796_b3d4_07a1e3c46a9a" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\.forge-meta" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_module.exp_ad136750_a822_45db_ba9f_6b2c8c3b1f38" Guid="007462be-ac98-4c01-b368-fa551fca1666" Win64="no">
+                          <File Name="module.exp" Id="_module.exp_ad136750_a822_45db_ba9f_6b2c8c3b1f38" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\module.exp" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_module.iobj_5edbfb3e_cd75_4514_919c_51fa9a154e76" Guid="78aa824d-1590-4855-becd-3a7ad9ef7826" Win64="no">
+                          <File Name="module.iobj" Id="_module.iobj_5edbfb3e_cd75_4514_919c_51fa9a154e76" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\module.iobj" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_module.ipdb_ca530101_8d0e_43f2_b3b2_0b40a5d9d957" Guid="818b9b4a-a7da-4fd1-924d-ce542695aa1e" Win64="no">
+                          <File Name="module.ipdb" Id="_module.ipdb_ca530101_8d0e_43f2_b3b2_0b40a5d9d957" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\module.ipdb" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_module.lib_b168b854_c9cb_4c57_b381_ba525e84f56a" Guid="a2906d1d-1fa1-45df-b19a-2bea79550d96" Win64="no">
+                          <File Name="module.lib" Id="_module.lib_b168b854_c9cb_4c57_b381_ba525e84f56a" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\module.lib" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_module.node_f7614d8f_20fc_4dcf_bf8d_3a7baaee2ac9" Guid="7550f302-3283-47f0-80fb-c946c1cc4b07" Win64="no">
+                          <File Name="module.node" Id="_module.node_f7614d8f_20fc_4dcf_bf8d_3a7baaee2ac9" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\module.node" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_module.pdb_33a24f14_4b3f_46ec_a8bc_74be0bb85e62" Guid="902b538d-e0ec-4721-9058-a7a58b85e099" Win64="no">
+                          <File Name="module.pdb" Id="_module.pdb_33a24f14_4b3f_46ec_a8bc_74be0bb85e62" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\Release\module.pdb" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                      </Directory>
+                      <Component Id="_binding.sln_29b2abec_c8e0_4a96_869a_9c11534ec68b" Guid="02c3b788-7cbc-427a-9ea5-4cfa15bc49d1" Win64="no">
+                        <File Name="binding.sln" Id="_binding.sln_29b2abec_c8e0_4a96_869a_9c11534ec68b" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\binding.sln" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_config.gypi_ed030c7a_fce0_496b_bbf4_6b85ce7306bf" Guid="cf311465-88d7-4bd7-b957-9a4e45b786ae" Win64="no">
+                        <File Name="config.gypi" Id="_config.gypi_ed030c7a_fce0_496b_bbf4_6b85ce7306bf" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\config.gypi" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_module.vcxproj_4cdcd191_2c89_4948_8bff_d912e9182a1f" Guid="c6ac98e2-4bf1-4728-8798-8a3d2b606d95" Win64="no">
+                        <File Name="module.vcxproj" Id="_module.vcxproj_4cdcd191_2c89_4948_8bff_d912e9182a1f" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\module.vcxproj" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_module.vcxproj.filters_4cb40000_c036_4777_b58f_25ec25a6abb8" Guid="7b05096c-f437-448e-b66b-04ab763bc222" Win64="no">
+                        <File Name="module.vcxproj.filters" Id="_module.vcxproj.filters_4cb40000_c036_4777_b58f_25ec25a6abb8" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\build\module.vcxproj.filters" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                    </Directory>
+
+                    <Directory Id="_src_44b6eeb6_bfdf_41bc_82ef_276bc3703289" Name="src">
+                      <Component Id="_module.cc_3f774add_677b_4cbf_ab86_6b83b52f6029" Guid="f805080e-ff6e-478d-bf61-9e34aa5f241e" Win64="no">
+                        <File Name="module.cc" Id="_module.cc_3f774add_677b_4cbf_ab86_6b83b52f6029" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\src\module.cc" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                    </Directory>                    <Component Id="_README.md_ed26c334_ae98_4706_b474_a9b3e7d1b15a" Guid="12fd5d90-1d55-41bf-8560-daf3b4d4329a" Win64="no">
+                      <File Name="README.md" Id="_README.md_ed26c334_ae98_4706_b474_a9b3e7d1b15a" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\README.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_binding.gyp_2cebf89f_d920_45d4_b3dc_da5d863c7faf" Guid="68f040b7-1b3b-4c08-aa58-121bae3b3224" Win64="no">
+                      <File Name="binding.gyp" Id="_binding.gyp_2cebf89f_d920_45d4_b3dc_da5d863c7faf" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\binding.gyp" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_bindings.js_837a2502_e0f1_4e79_8119_26bba7e503d2" Guid="d44e3a2d-bb94-46f8-9050-e742b87b08e6" Win64="no">
+                      <File Name="bindings.js" Id="_bindings.js_837a2502_e0f1_4e79_8119_26bba7e503d2" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\bindings.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_package.json_39b42769_3b7c_4f2d_88b6_b949faaedb41" Guid="9c5124f9-fc51-45a3-b45c-467fd686b559" Win64="no">
+                      <File Name="package.json" Id="_package.json_39b42769_3b7c_4f2d_88b6_b949faaedb41" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\package.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_test.js_c7e9be34_6e3f_406d_ab6f_da2bd72c474e" Guid="2a45a250-7dfb-41b2-8674-db7a6d02349d" Win64="no">
+                      <File Name="test.js" Id="_test.js_c7e9be34_6e3f_406d_ab6f_da2bd72c474e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\exe-icon-extractor\test.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                  </Directory>
+
+                  <Directory Id="_follow_redirects_dcb22224_aa1b_4727_a43a_bdf678865a0e" Name="follow-redirects">
+                    <Component Id="_LICENSE_fbf4657f_c030_43b2_ac48_e5e1844bdc2a" Guid="c48d8965-edfd-4a88-a83a-c40aedd22098" Win64="no">
+                      <File Name="LICENSE" Id="_LICENSE_fbf4657f_c030_43b2_ac48_e5e1844bdc2a" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\follow-redirects\LICENSE" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_README.md_1b349999_fea0_4f4e_88fe_ee364c6204cf" Guid="70d98f4c-f8de-4db2-a79c-d5f915400bc9" Win64="no">
+                      <File Name="README.md" Id="_README.md_1b349999_fea0_4f4e_88fe_ee364c6204cf" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\follow-redirects\README.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_debug.js_f9dc9edd_6a83_4861_8111_8a9fc7b3754c" Guid="7dd3abb1-03e9-47fb-9178-77f81fe1bdfe" Win64="no">
+                      <File Name="debug.js" Id="_debug.js_f9dc9edd_6a83_4861_8111_8a9fc7b3754c" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\follow-redirects\debug.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_http.js_477291ab_d890_4446_8bb0_474a861bd913" Guid="49b849b6-2d88-423e-a967-03cfab0533bc" Win64="no">
+                      <File Name="http.js" Id="_http.js_477291ab_d890_4446_8bb0_474a861bd913" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\follow-redirects\http.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_https.js_0a9746d2_37c9_4d5b_90cc_858b958183eb" Guid="2ea4be15-3873-41fa-b88d-e3bf6b33755d" Win64="no">
+                      <File Name="https.js" Id="_https.js_0a9746d2_37c9_4d5b_90cc_858b958183eb" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\follow-redirects\https.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_index.js_f253c876_c777_4fae_9bc7_797786e5937e" Guid="026b0c82-99b0-48dd-90e9-de767a6eec8d" Win64="no">
+                      <File Name="index.js" Id="_index.js_f253c876_c777_4fae_9bc7_797786e5937e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\follow-redirects\index.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_package.json_bca8bcbd_2596_4061_ab3e_272a3550d68e" Guid="8126645c-73b2-444f-9416-f0fac6f5fe3c" Win64="no">
+                      <File Name="package.json" Id="_package.json_bca8bcbd_2596_4061_ab3e_272a3550d68e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\follow-redirects\package.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                  </Directory>
+                  <Directory Id="_github_url_to_object_6c3a5ce5_5d2e_409a_9ed2_6eec059e3af8" Name="github-url-to-object">
+                    <Directory Id="_dist_744b5de5_3a4f_467c_baa1_8870860a101c" Name="dist">
+                      <Component Id="_commonjs.js_b9204d27_d93c_40d4_8104_2e49a3a7ecdc" Guid="204bbc4c-0ac3-4143-8b78-43f1aa2c2d90" Win64="no">
+                        <File Name="commonjs.js" Id="_commonjs.js_b9204d27_d93c_40d4_8104_2e49a3a7ecdc" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\github-url-to-object\dist\commonjs.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_gh.js_4697e8ba_e397_4ce4_85d0_babd4c06e5b5" Guid="01bf7cc3-5caf-4593-86de-907c5a1b8dd4" Win64="no">
+                        <File Name="gh.js" Id="_gh.js_4697e8ba_e397_4ce4_85d0_babd4c06e5b5" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\github-url-to-object\dist\gh.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_index.html_f32283c5_52fb_409c_8ce8_94cbe206ef9b" Guid="b285308c-aeb4-4300-81e1-ef8e390ff002" Win64="no">
+                        <File Name="index.html" Id="_index.html_f32283c5_52fb_409c_8ce8_94cbe206ef9b" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\github-url-to-object\dist\index.html" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                    </Directory>
+                    <Directory Id="_test_1a438180_bdf4_4078_b44b_3fbfea659b36" Name="test">
+                      <Component Id="_index.js_cb97cfa7_b4ed_4bdf_8a26_591c53d07131" Guid="e374a173-5b97-4efd-a027-e69c5d25718c" Win64="no">
+                        <File Name="index.js" Id="_index.js_cb97cfa7_b4ed_4bdf_8a26_591c53d07131" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\github-url-to-object\test\index.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_mocha.opts_8964bfb2_e09a_42c9_be52_a004155170cf" Guid="84cbbf32-3853-4999-be39-6b70718d7026" Win64="no">
+                        <File Name="mocha.opts" Id="_mocha.opts_8964bfb2_e09a_42c9_be52_a004155170cf" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\github-url-to-object\test\mocha.opts" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                    </Directory>                    <Component Id="_.travis.yml_4a691c44_d389_42c0_9475_f6b62e809627" Guid="30e00fc2-d74f-43e8-aad6-7c401bf6457c" Win64="no">
+                      <File Name=".travis.yml" Id="_.travis.yml_4a691c44_d389_42c0_9475_f6b62e809627" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\github-url-to-object\.travis.yml" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_README.md_4df23466_8259_47df_9f9a_00dc7c6900e2" Guid="b12674a6-7254-4985-b0f4-4c5cf5001a39" Win64="no">
+                      <File Name="README.md" Id="_README.md_4df23466_8259_47df_9f9a_00dc7c6900e2" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\github-url-to-object\README.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_bower.json_78889009_5af2_4113_907e_3783b670332c" Guid="a202b93b-391d-4486-93ad-72fef83174af" Win64="no">
+                      <File Name="bower.json" Id="_bower.json_78889009_5af2_4113_907e_3783b670332c" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\github-url-to-object\bower.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_index.js_45d0005a_4594_4aa5_9103_4664f382e70b" Guid="3543063e-d4cc-41b5-a4d8-f8ec72bd9973" Win64="no">
+                      <File Name="index.js" Id="_index.js_45d0005a_4594_4aa5_9103_4664f382e70b" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\github-url-to-object\index.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_package.json_278cbd75_7196_470c_a6d3_0efa4bff7ea2" Guid="cd13b531-a70d-45da-b186-d4c65746a798" Win64="no">
+                      <File Name="package.json" Id="_package.json_278cbd75_7196_470c_a6d3_0efa4bff7ea2" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\github-url-to-object\package.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                  </Directory>
+
+                  <Directory Id="_resources_app_node_modules_is_url_ce15f428_5ff9_4d53_8efb_d072c08f9d18" Name="is-url">
+                    <Directory Id="_test_e778f241_8092_44fc_a6fb_2a0b2a0086c2" Name="test">
+                      <Component Id="_index.js_4386c78d_c8ce_4d86_a98a_521081c11655" Guid="5c2013e6-7547-43f7-8e98-d3029c06ff01" Win64="no">
+                        <File Name="index.js" Id="_index.js_4386c78d_c8ce_4d86_a98a_521081c11655" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\is-url\test\index.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                    </Directory>                    <Component Id="_.travis.yml_4ee4b35c_67ff_4324_933f_2299ea89563c" Guid="6bf0eda8-2d40-46ea-b6a1-20f4670c5090" Win64="no">
+                      <File Name=".travis.yml" Id="_.travis.yml_4ee4b35c_67ff_4324_933f_2299ea89563c" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\is-url\.travis.yml" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_History.md_4c8052a0_0dec_48cb_802a_57dcabd996f7" Guid="d749fe5d-9ace-4bbe-9e13-15c9c73c42df" Win64="no">
+                      <File Name="History.md" Id="_History.md_4c8052a0_0dec_48cb_802a_57dcabd996f7" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\is-url\History.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_LICENSE_MIT_66457d7d_82ef_438a_9433_9e4af480011e" Guid="4211c4fc-f1c7-4b9c-ab6c-f08cd54a097a" Win64="no">
+                      <File Name="LICENSE-MIT" Id="_LICENSE_MIT_66457d7d_82ef_438a_9433_9e4af480011e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\is-url\LICENSE-MIT" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_Readme.md_6e495c98_0723_43f3_8065_3530cad15f9d" Guid="1ff9cef6-641f-4c99-a923-2734b38129c2" Win64="no">
+                      <File Name="Readme.md" Id="_Readme.md_6e495c98_0723_43f3_8065_3530cad15f9d" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\is-url\Readme.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_index.js_761f92ac_614f_4253_a8fd_c6cf9e097ebe" Guid="5b5ccb2f-cb7c-47c7-a14c-fcbee18955f0" Win64="no">
+                      <File Name="index.js" Id="_index.js_761f92ac_614f_4253_a8fd_c6cf9e097ebe" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\is-url\index.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_package.json_b9d0ad40_b141_433f_9670_b3d062af77d2" Guid="580acb60-7f3a-4b4b-a489-eecf3c681b55" Win64="no">
+                      <File Name="package.json" Id="_package.json_b9d0ad40_b141_433f_9670_b3d062af77d2" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\is-url\package.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                  </Directory>
+
+                  <Directory Id="_resources_app_node_modules_ms_639d5faf_e972_4f5b_bd81_0156fd7d3e9a" Name="ms">
+                    <Component Id="_index.js_35351317_d53d_4417_9225_654e9192e929" Guid="ff1520ae-5875-4844-87bf-97a357d8a56d" Win64="no">
+                      <File Name="index.js" Id="_index.js_35351317_d53d_4417_9225_654e9192e929" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\ms\index.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_license.md_2b2a3e34_2d97_45ee_b6cd_c22c346e0daf" Guid="56d2c8c8-2bb9-4811-a63f-9f3489dcf4ab" Win64="no">
+                      <File Name="license.md" Id="_license.md_2b2a3e34_2d97_45ee_b6cd_c22c346e0daf" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\ms\license.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_package.json_c01df240_1a10_4032_b073_fb6cad0cb7ea" Guid="fee94a72-d374-4bec-80e9-8350b4866956" Win64="no">
+                      <File Name="package.json" Id="_package.json_c01df240_1a10_4032_b073_fb6cad0cb7ea" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\ms\package.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_readme.md_b1d3ff65_a53d_4b21_99c3_487ae8e4c15a" Guid="b2ba52c1-243b-4cef-a124-3b5e7ffc9069" Win64="no">
+                      <File Name="readme.md" Id="_readme.md_b1d3ff65_a53d_4b21_99c3_487ae8e4c15a" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\ms\readme.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                  </Directory>
+                  <Directory Id="_punycode_dc92bd49_7a54_4397_aa46_d24ae4d97864" Name="punycode">
+                    <Component Id="_LICENSE_MIT.txt_24009d25_88aa_4a69_9178_88f9a576cf32" Guid="9e353960-81c8-45af-9b3e-18883bd4f48e" Win64="no">
+                      <File Name="LICENSE-MIT.txt" Id="_LICENSE_MIT.txt_24009d25_88aa_4a69_9178_88f9a576cf32" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\punycode\LICENSE-MIT.txt" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_README.md_8e9f3f31_5216_4658_a7c5_f833fe07785b" Guid="0d8b6a71-4cc4-48b2-8b42-d412e2aa66ff" Win64="no">
+                      <File Name="README.md" Id="_README.md_8e9f3f31_5216_4658_a7c5_f833fe07785b" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\punycode\README.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_package.json_ad0de878_51dd_4140_86d0_94833fe6e5c3" Guid="795977b7-7904-4889-af6a-edb753ed84a6" Win64="no">
+                      <File Name="package.json" Id="_package.json_ad0de878_51dd_4140_86d0_94833fe6e5c3" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\punycode\package.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_punycode.es6.js_3959f6f2_f1c5_4db5_8e4c_a2336dc81954" Guid="da587515-81f1-429d-a3c3-755761bf5858" Win64="no">
+                      <File Name="punycode.es6.js" Id="_punycode.es6.js_3959f6f2_f1c5_4db5_8e4c_a2336dc81954" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\punycode\punycode.es6.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_punycode.js_438e7ed6_eb93_44cb_8136_de4790308cc2" Guid="d1cd181b-e5ac-4607-bed2-80d6b1669caf" Win64="no">
+                      <File Name="punycode.js" Id="_punycode.js_438e7ed6_eb93_44cb_8136_de4790308cc2" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\punycode\punycode.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                  </Directory>
+                  <Directory Id="_update_electron_app_f59ee364_13e9_4050_8fd6_b0c398e27c72" Name="update-electron-app">
+                    <Directory Id="_.circleci_79e2b7a4_2cc6_4024_9412_a461451b4656" Name=".circleci">
+                      <Component Id="_config.yml_f8786cb9_88db_48ee_934d_87cfa0ea31be" Guid="5ee796ed-74fe-414c-9564-d92ce0bd973c" Win64="no">
+                        <File Name="config.yml" Id="_config.yml_f8786cb9_88db_48ee_934d_87cfa0ea31be" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\.circleci\config.yml" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                    </Directory>
+                    <Directory Id="_node_modules_bd55f4f3_21df_46f1_865c_d7487353a45d" Name="node_modules">
+                      <Directory Id="_ms_6bfc7393_a363_425b_a092_455c81fca90f" Name="ms">
+                        <Component Id="_index.js_2a45712e_a225_4d42_84b2_113406c1e2f3" Guid="0a387d3d-7fe4-494a-86ea-db9e2389adad" Win64="no">
+                          <File Name="index.js" Id="_index.js_2a45712e_a225_4d42_84b2_113406c1e2f3" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\node_modules\ms\index.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_license.md_d4ece602_8a21_439e_aa1a_d584a00973c5" Guid="c4d77a3d-5450-4ba0-bd6c-bcb85fb69bc5" Win64="no">
+                          <File Name="license.md" Id="_license.md_d4ece602_8a21_439e_aa1a_d584a00973c5" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\node_modules\ms\license.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_package.json_5a02be63_17cb_49c0_8887_18e8c8977d61" Guid="56bcfa58-2543-446d-861b-b57a76973890" Win64="no">
+                          <File Name="package.json" Id="_package.json_5a02be63_17cb_49c0_8887_18e8c8977d61" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\node_modules\ms\package.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                        <Component Id="_readme.md_546325d0_1d79_483e_bb67_c6d09e074026" Guid="e5d9db2f-ac03-40a9-8bf2-dc9e443be469" Win64="no">
+                          <File Name="readme.md" Id="_readme.md_546325d0_1d79_483e_bb67_c6d09e074026" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\node_modules\ms\readme.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                        </Component>
+                      </Directory>
+                    </Directory>
+
+                    <Directory Id="_test_a31f4147_815d_412a_91d5_977263516b6b" Name="test">
+                      <Component Id="_index.test_d.ts_367b2f86_40f0_4186_b678_1edcfab01dc8" Guid="8fdfdc3e-6973-46a0-8b41-c9a28dd865c5" Win64="no">
+                        <File Name="index.test-d.ts" Id="_index.test_d.ts_367b2f86_40f0_4186_b678_1edcfab01dc8" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\test\index.test-d.ts" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                      <Component Id="_index.test.js_f80524c0_95f0_4d66_ab33_081798935b12" Guid="13ca4ebc-860a-47e6-8573-4b5a6c4e8c95" Win64="no">
+                        <File Name="index.test.js" Id="_index.test.js_f80524c0_95f0_4d66_ab33_081798935b12" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\test\index.test.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                      </Component>
+                    </Directory>                    <Component Id="_.releaserc.json_b778e0d7_35a6_43fe_9b8a_5114233fe889" Guid="16bddc1c-4b58-4b3f-a0a3-c42221c9d252" Win64="no">
+                      <File Name=".releaserc.json" Id="_.releaserc.json_b778e0d7_35a6_43fe_9b8a_5114233fe889" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\.releaserc.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_LICENSE_9136dd64_dcb9_4c6a_8224_4efec20ef02e" Guid="1e5a75b5-6fd0-4825-816d-06a6da5edbb7" Win64="no">
+                      <File Name="LICENSE" Id="_LICENSE_9136dd64_dcb9_4c6a_8224_4efec20ef02e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\LICENSE" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_index.d.ts_b7e90bd0_96ef_4484_a6bf_233261455b92" Guid="4c5c6e23-67f5-4ba2-b4ed-cdf6ddea6268" Win64="no">
+                      <File Name="index.d.ts" Id="_index.d.ts_b7e90bd0_96ef_4484_a6bf_233261455b92" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\index.d.ts" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_index.js_ff7a64d3_defb_4ef9_8be2_7c8b0eaeb89d" Guid="b989f18e-eea7-4d30-8451-1c035946af25" Win64="no">
+                      <File Name="index.js" Id="_index.js_ff7a64d3_defb_4ef9_8be2_7c8b0eaeb89d" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\index.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_package.json_caa3e1a4_952e_432f_bb17_ae95df884b25" Guid="d7777adb-137c-416f-9c10-488c044befd4" Win64="no">
+                      <File Name="package.json" Id="_package.json_caa3e1a4_952e_432f_bb17_ae95df884b25" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\package.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_readme.md_404f49c5_e02f_411c_bcf1_663e9543cf61" Guid="d0be9144-77be-41ca-88db-059ed133600a" Win64="no">
+                      <File Name="readme.md" Id="_readme.md_404f49c5_e02f_411c_bcf1_663e9543cf61" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\readme.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                    <Component Id="_screenshot.png_9317566f_1d18_484b_a4bb_ff316e6c7f33" Guid="1e64d3c2-d7eb-4609-9389-785dac3aae9f" Win64="no">
+                      <File Name="screenshot.png" Id="_screenshot.png_9317566f_1d18_484b_a4bb_ff316e6c7f33" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\node_modules\update-electron-app\screenshot.png" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                    </Component>
+                  </Directory>
+
+                </Directory>
+                <Component Id="_resources_app_.gitignore_349b74e7_334c_456a_aef1_c70aac706126" Guid="b6808877-f598-449e-9aa2-4e5df5a97d18" Win64="no">
+                  <File Name=".gitignore" Id="_resources_app_.gitignore_349b74e7_334c_456a_aef1_c70aac706126" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\.gitignore" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_LICENSE.md_4aa697ff_400a_4d19_a972_f843c452d948" Guid="0a6cbfad-8a64-4f32-b053-085c5729e384" Win64="no">
+                  <File Name="LICENSE.md" Id="_resources_app_LICENSE.md_4aa697ff_400a_4d19_a972_f843c452d948" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\LICENSE.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_README.md_b054c62b_794a_4097_9229_1075c987619e" Guid="27f578bf-8e50-4fb9-bf73-d56729997977" Win64="no">
+                  <File Name="README.md" Id="_resources_app_README.md_b054c62b_794a_4097_9229_1075c987619e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\README.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_forge.config.js_098d52b3_b3e6_4327_8181_382d46c2b87d" Guid="f53caab1-d5d7-4764-9e22-77b18ced1d7b" Win64="no">
+                  <File Name="forge.config.js" Id="_resources_app_forge.config.js_098d52b3_b3e6_4327_8181_382d46c2b87d" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\forge.config.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_index.html_2db32db7_1637_4834_8628_7f575ab7b503" Guid="2570138f-2e94-45ab-b552-122dc199ab39" Win64="no">
+                  <File Name="index.html" Id="_resources_app_index.html_2db32db7_1637_4834_8628_7f575ab7b503" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\index.html" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_installation.md_afa8457f_0c5b_4337_b811_e2c7a8f7d964" Guid="d1db7715-0e0b-415a-87f5-13c1efcdeca4" Win64="no">
+                  <File Name="installation.md" Id="_resources_app_installation.md_afa8457f_0c5b_4337_b811_e2c7a8f7d964" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\installation.md" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_logo.icns_21bbca19_384e_4418_9076_bb4173430745" Guid="846c7706-d6e3-4a85-8bbb-cbea3d0ba672" Win64="no">
+                  <File Name="logo.icns" Id="_resources_app_logo.icns_21bbca19_384e_4418_9076_bb4173430745" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\logo.icns" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_logo.ico_a4c2fba3_1741_4684_a6a8_e999311e8ea5" Guid="74a30b69-099e-49d2-a204-fc4305f1de43" Win64="no">
+                  <File Name="logo.ico" Id="_resources_app_logo.ico_a4c2fba3_1741_4684_a6a8_e999311e8ea5" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\logo.ico" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_logo.png_ef01cd4d_b1cf_4cdc_957c_3944a495edd7" Guid="c1e67d94-c6a7-4f21-a0b1-00d7ae5ea3f1" Win64="no">
+                  <File Name="logo.png" Id="_resources_app_logo.png_ef01cd4d_b1cf_4cdc_957c_3944a495edd7" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\logo.png" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_macos_blocked.png_0151ab43_1190_4175_9dcb_a187198f3936" Guid="88b36965-e0e7-401c-b566-ceb382fe4220" Win64="no">
+                  <File Name="macos-blocked.png" Id="_resources_app_macos_blocked.png_0151ab43_1190_4175_9dcb_a187198f3936" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\macos-blocked.png" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_macos_open_1.png_5e95e6af_f6de_4b9a_be0c_6bc5c2706c97" Guid="14ecb5de-0b16-44f4-9560-54c9de1f5ce2" Win64="no">
+                  <File Name="macos-open-1.png" Id="_resources_app_macos_open_1.png_5e95e6af_f6de_4b9a_be0c_6bc5c2706c97" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\macos-open-1.png" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_macos_open_2.png_e086e6e1_9326_42c1_92bf_fe7855c1efeb" Guid="02785240-a65d-4206-b8b7-aec38885795d" Win64="no">
+                  <File Name="macos-open-2.png" Id="_resources_app_macos_open_2.png_e086e6e1_9326_42c1_92bf_fe7855c1efeb" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\macos-open-2.png" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_main.js_a61a9139_7bd6_4dbd_89e6_82e7d00a7d39" Guid="0d8f08e0-d75f-4da2-94ac-41f720c9dc80" Win64="no">
+                  <File Name="main.js" Id="_resources_app_main.js_a61a9139_7bd6_4dbd_89e6_82e7d00a7d39" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\main.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_package.json_261d95f6_041a_42cd_8563_f27323ec5638" Guid="a9aab1ed-6c0b-4e09-992b-865501a613ce" Win64="no">
+                  <File Name="package.json" Id="_resources_app_package.json_261d95f6_041a_42cd_8563_f27323ec5638" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\package.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_preload.js_48ab6fe0_9243_4126_8079_168ad071c99d" Guid="374623c3-3037-4553-96d6-c2ff3e730078" Win64="no">
+                  <File Name="preload.js" Id="_resources_app_preload.js_48ab6fe0_9243_4126_8079_168ad071c99d" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\preload.js" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+                <Component Id="_resources_app_style.css_aec0124b_1b40_48fd_8cff_41c7fcc72e95" Guid="dce117c8-7cbf-461f-b321-fef10a95eed0" Win64="no">
+                  <File Name="style.css" Id="_resources_app_style.css_aec0124b_1b40_48fd_8cff_41c7fcc72e95" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources\app\style.css" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+                </Component>
+              </Directory>
+
+            </Directory>
+
+            <Directory Id="_swiftshader_0797ff9f_478b_40ea_882f_fe0e30f7c2f7" Name="swiftshader">
+              <Component Id="_swiftshader_libEGL.dll_250b3c3c_fcd0_4da2_b27f_3ae398dae858" Guid="26e51b86-9d1b-4ecc-8e5a-fcc3b56521c4" Win64="no">
+                <File Name="libEGL.dll" Id="_swiftshader_libEGL.dll_250b3c3c_fcd0_4da2_b27f_3ae398dae858" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\swiftshader\libEGL.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_swiftshader_libGLESv2.dll_a5e46781_ed0a_4457_bd4e_ff37a402c4a7" Guid="99aa59d9-c5eb-47de-898d-1157802d8d08" Win64="no">
+                <File Name="libGLESv2.dll" Id="_swiftshader_libGLESv2.dll_a5e46781_ed0a_4457_bd4e_ff37a402c4a7" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\swiftshader\libGLESv2.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+            </Directory>            <Component Id="_LICENSE_d9bbcb63_08c7_435f_a08f_f971d86edc2b" Guid="c80d1776-88d0-4bc0-95bf-f52a9f0eacca" Win64="no">
+              <File Name="LICENSE" Id="_LICENSE_d9bbcb63_08c7_435f_a08f_f971d86edc2b" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\LICENSE" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_LICENSES.chromium.html_90060c8d_c1f7_44ad_97cc_b8f73fea7c69" Guid="7d846b47-7941-478e-b364-e04b3abc0bd8" Win64="no">
+              <File Name="LICENSES.chromium.html" Id="_LICENSES.chromium.html_90060c8d_c1f7_44ad_97cc_b8f73fea7c69" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\LICENSES.chromium.html" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_chrome_100_percent.pak_498b202f_d1cd_4705_9fbd_ddf3436faa8e" Guid="eb507d4a-3c16-4e6c-b9f2-2d6be1cd03bf" Win64="no">
+              <File Name="chrome_100_percent.pak" Id="_chrome_100_percent.pak_498b202f_d1cd_4705_9fbd_ddf3436faa8e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\chrome_100_percent.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_chrome_200_percent.pak_3ced949b_8ec9_47c5_8e4b_7376f14ede80" Guid="34452672-42e6-4c38-9bba-b3a3590ed405" Win64="no">
+              <File Name="chrome_200_percent.pak" Id="_chrome_200_percent.pak_3ced949b_8ec9_47c5_8e4b_7376f14ede80" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\chrome_200_percent.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_d3dcompiler_47.dll_d6e931d2_d57b_4ad2_bdeb_ee8fb20cdc6e" Guid="139c07db-9bd6-4e94-b31c-9cc321d268dd" Win64="no">
+              <File Name="d3dcompiler_47.dll" Id="_d3dcompiler_47.dll_d6e931d2_d57b_4ad2_bdeb_ee8fb20cdc6e" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\d3dcompiler_47.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_dns_resolver.exe_e5db5015_b00a_4881_80ec_bee8ea406696" Guid="28a83ff1-320d-4b19-b27e-6bf23fb8cf63" Win64="no">
+              <File Name="dns-resolver.exe" Id="_dns_resolver.exe_e5db5015_b00a_4881_80ec_bee8ea406696" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\dns-resolver.exe" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_ffmpeg.dll_82fee501_dd97_41ca_941e_fe859a400984" Guid="762e34c4-81ff-4090-bd29-8c8889e53e18" Win64="no">
+              <File Name="ffmpeg.dll" Id="_ffmpeg.dll_82fee501_dd97_41ca_941e_fe859a400984" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\ffmpeg.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_icudtl.dat_fab0fc57_999a_4690_9b73_2306e5b87392" Guid="8ae504e0-a1e5-4b8d-bf26-4de44e1e0a08" Win64="no">
+              <File Name="icudtl.dat" Id="_icudtl.dat_fab0fc57_999a_4690_9b73_2306e5b87392" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\icudtl.dat" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_libEGL.dll_9cba77d6_667a_4fdc_9ad8_6fded7dcfd9b" Guid="23297487-ae30-4538-94c3-9393b15b4583" Win64="no">
+              <File Name="libEGL.dll" Id="_libEGL.dll_9cba77d6_667a_4fdc_9ad8_6fded7dcfd9b" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\libEGL.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_libGLESv2.dll_1e173372_a1a6_4628_9552_4d69eebbc21b" Guid="a89413f6-34a2-40d3-870f-15da3e060951" Win64="no">
+              <File Name="libGLESv2.dll" Id="_libGLESv2.dll_1e173372_a1a6_4628_9552_4d69eebbc21b" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\libGLESv2.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_resources.pak_2139ead4_a77f_4527_bed5_0dbd937b4fac" Guid="26a6f954-d674-4e98-b551-5e86091f0bfe" Win64="no">
+              <File Name="resources.pak" Id="_resources.pak_2139ead4_a77f_4527_bed5_0dbd937b4fac" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\resources.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_snapshot_blob.bin_ee9702e9_ff2c_43d7_bba0_674995f02baf" Guid="26aafc41-29ef-45f8-8a31-a14b65e89e5f" Win64="no">
+              <File Name="snapshot_blob.bin" Id="_snapshot_blob.bin_ee9702e9_ff2c_43d7_bba0_674995f02baf" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\snapshot_blob.bin" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_v8_context_snapshot.bin_525e7077_76eb_46eb_a4fe_7438c595d0d8" Guid="4582a3a3-f59d-405d-a0c7-bec858cb5540" Win64="no">
+              <File Name="v8_context_snapshot.bin" Id="_v8_context_snapshot.bin_525e7077_76eb_46eb_a4fe_7438c595d0d8" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\v8_context_snapshot.bin" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_version_43a10d88_51b8_4030_87cb_129b178c3122" Guid="c084373b-0343-4503-84f8-f2f9d61df917" Win64="no">
+              <File Name="version" Id="_version_43a10d88_51b8_4030_87cb_129b178c3122" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\version" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_vk_swiftshader.dll_9711b9ff_6946_493c_8589_71b3644ebaa7" Guid="efe404d6-9336-4522-b9f4-e9b63b0fc0bc" Win64="no">
+              <File Name="vk_swiftshader.dll" Id="_vk_swiftshader.dll_9711b9ff_6946_493c_8589_71b3644ebaa7" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\vk_swiftshader.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_vk_swiftshader_icd.json_5ea2be44_e2fb_4768_b2ad_aebf2d34e5f5" Guid="3dabbcbf-e908-46ba-970b-ba984034def5" Win64="no">
+              <File Name="vk_swiftshader_icd.json" Id="_vk_swiftshader_icd.json_5ea2be44_e2fb_4768_b2ad_aebf2d34e5f5" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\vk_swiftshader_icd.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_vulkan_1.dll_ae33bad2_7808_4f19_ab20_29d694c78150" Guid="3bc0eef4-7683-414f-b1d6-5c6610b84b5e" Win64="no">
+              <File Name="vulkan-1.dll" Id="_vulkan_1.dll_ae33bad2_7808_4f19_ab20_29d694c78150" Source="D:\a\dns-resolver\dns-resolver\out\DNS Resolver-win32-x64\vulkan-1.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+          </Directory>
+          <Component Id="_dns_resolver.exe_26e3fe56_3077_4916_b7d9_73eea123dc46" Guid="53f797c3-e996-4ffc-bd84-62ba5b1a0035" Win64="no">
+            <File Name="dns-resolver.exe" Id="_dns_resolver.exe_26e3fe56_3077_4916_b7d9_73eea123dc46" Source="C:\Users\RUNNER~1\AppData\Local\Temp\dns-resolverlVc6P5\dns-resolver.exe" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+          </Component>
+          <Component Id="_.installInfo.json_fe5ce30b_9309_4a3d_86ed_191bd3f07180" Guid="a5533aa1-c70c-4196-a622-4dc2af51b5bc" Win64="no">
+            <File Name=".installInfo.json" Id="_.installInfo.json_fe5ce30b_9309_4a3d_86ed_191bd3f07180" Source="C:\Users\RUNNER~1\AppData\Local\Temp\.installInfoFubjqh\.installInfo.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+          </Component>
+          <Component Id="RegistryInstallPath" Guid="ea0e723b-cef2-4df8-81be-eb442b58b28c" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{5287D665-3311-4749-BF48-F22A62C389EA}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="InstallPath" Type="string" Value="[APPLICATIONROOTDIRECTORY]" KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+          <Component Id="UninstallDisplayName" Guid="62da95e6-e316-4d24-a53c-989645868674" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{5287D665-3311-4749-BF48-F22A62C389EA}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="DisplayName" Type="string" Value="[VisibleProductName]" KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+          <Component Id="UninstallPublisher" Guid="07d0bd6c-3f06-41fe-bf74-bdacf0c91c43" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{5287D665-3311-4749-BF48-F22A62C389EA}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="Publisher" Type="string" Value="Team int" KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+          <Component Id="UninstallDisplayVersion" Guid="836cf519-3f43-4df6-868f-2e0fbbbb2266" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{5287D665-3311-4749-BF48-F22A62C389EA}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="DisplayVersion" Type="string" Value="1.3.1" KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+          <Component Id="UninstallModifyString" Guid="44308757-bda5-4bc1-bb5f-e771e49e820a" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{5287D665-3311-4749-BF48-F22A62C389EA}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="ModifyPath" Type="expandable" Value="MsiExec.exe /I {5287D665-3311-4749-BF48-F22A62C389EA}" KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+          <Component Id="UninstallString" Guid="829da940-5135-4eb4-819e-6d93dd16546a" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{5287D665-3311-4749-BF48-F22A62C389EA}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="UninstallString" Type="expandable" Value="MsiExec.exe /X {5287D665-3311-4749-BF48-F22A62C389EA}" KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+          <Component Id="UninstallDisplayIcon" Guid="fb315ab5-ad15-4770-9347-4f241f087d6f" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{5287D665-3311-4749-BF48-F22A62C389EA}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="DisplayIcon" Type="expandable" Value="[SystemFolder]msiexec.exe" KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+        </Directory>
+      </Directory>
+
+      <!-- Desktop -->
+      <Directory Id="DesktopFolder" Name="Desktop" />
+
+      <!-- Start Menu -->
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="Team int"/>
+      </Directory>
+    </Directory>
+
+    <!-- Step 3: Add app to Start Menu -->
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="ApplicationShortcut" Guid="46ee8a7a-424f-49d5-bd2b-af1fa62cf75b" Win64="no">
+        <Shortcut Id="ApplicationStartMenuShortcut"
+                  Name="DNS Resolver"
+                  Description="A simple DNS Resolver app"
+                  Target="[APPLICATIONROOTDIRECTORY]dns-resolver.exe"
+                  WorkingDirectory="APPLICATIONROOTDIRECTORY">
+          <ShortcutProperty Key="System.AppUserModel.ID" Value="com.squirrel.dns resolver.dns-resolver" />
+        </Shortcut>
+        <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
+        <RegistryValue Root="HKCU"
+                       Key="Software\Microsoft\DNS Resolver"
+                       Name="installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes"/>
+      </Component>
+    </DirectoryRef>
+
+   <!-- Step 4: Add app desktop shortcut --> 
+    <DirectoryRef Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="5f100456-ae2f-4bf9-b4d9-d9f1c4545d73" >
+          <Shortcut Id="MyDesktopShortcut"
+                    Name="DNS Resolver"
+                    Description="A simple DNS Resolver app"
+                    Target="[APPLICATIONROOTDIRECTORY]dns-resolver.exe"
+                    WorkingDirectory="APPLICATIONROOTDIRECTORY"/>
+          <RegistryValue Root="HKCU"
+                    Key="Software\Microsoft\DNS Resolver"
+                    Name="installed"
+                    Type="integer"
+                    Value="1"
+                    KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+
+    <!-- Lets cleanup any files that are were not part of the initial install
+    via this MSI. Such as newer versions installed by the auto-updater. -->
+    <DirectoryRef Id="APPLICATIONROOTDIRECTORY">
+      <Component Id="PurgeOnUninstall" Guid="fa95dc34-953c-4cb4-988d-aa6cb078d6f7" Win64="no">
+        <CreateFolder/>
+        <util:RemoveFolderEx On="uninstall" Property="INSTALLPATH" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="Complete" Title="DNS Resolver (1.3.1)" Description="The complete package." Display="expand" Level="1" ConfigurableDirectory="APPLICATIONROOTDIRECTORY">
+      <!-- Step 5: Tell WiX to install the files -->
+      <Feature Id="MainApplication" Title="Main Application" Level="1" Description="The main components to run the applications." >
+        <ComponentRef Id="_locales_am.pak_f1ee3d3e_32a7_414e_ace2_2cbae41459d1" />
+        <ComponentRef Id="_locales_ar.pak_45123631_eee0_49d3_9f11_72ffd5b21a49" />
+        <ComponentRef Id="_locales_bg.pak_794f89ce_34c2_416e_96c6_bab3b691e7d6" />
+        <ComponentRef Id="_locales_bn.pak_5ff8b386_5b56_463b_9295_a4d6097db455" />
+        <ComponentRef Id="_locales_ca.pak_982f4a04_d6a2_4858_a3fb_5520614256e3" />
+        <ComponentRef Id="_locales_cs.pak_9888b0c9_b3e7_482e_a32f_08d88a1de47a" />
+        <ComponentRef Id="_locales_da.pak_9bb5ee40_1587_4bdc_af42_8443e586ab49" />
+        <ComponentRef Id="_locales_de.pak_55e8f689_2e0c_4d43_9d63_fd3777614a87" />
+        <ComponentRef Id="_locales_el.pak_0b41a088_e718_4aa8_8c99_2c918c0d5e0f" />
+        <ComponentRef Id="_locales_en_GB.pak_e279342f_e451_449e_8373_e341046ce992" />
+        <ComponentRef Id="_locales_en_US.pak_22bac4c4_2775_4c52_9dc7_9e10af213688" />
+        <ComponentRef Id="_locales_es_419.pak_9df55fba_044a_4bb3_aef8_1faa7a7e7b7b" />
+        <ComponentRef Id="_locales_es.pak_a4cea106_87d5_425b_8045_0a6c76b2ef81" />
+        <ComponentRef Id="_locales_et.pak_05619faf_e07b_456e_8b40_44b7eda4de6d" />
+        <ComponentRef Id="_locales_fa.pak_131b51f9_a257_4be4_b330_fad67b828b8d" />
+        <ComponentRef Id="_locales_fi.pak_4afd9daf_67c4_4216_a07f_437e6f3f7ff5" />
+        <ComponentRef Id="_locales_fil.pak_1e469ca3_51ca_4da5_94f3_26afeb13ac20" />
+        <ComponentRef Id="_locales_fr.pak_65341c51_0aaf_4bd6_baf9_c4a37c63654c" />
+        <ComponentRef Id="_locales_gu.pak_65c3bc52_c1b7_4bf7_b145_bd17dabd1c75" />
+        <ComponentRef Id="_locales_he.pak_7bbf7dbc_0273_4ff0_8d1c_0cf39abfc665" />
+        <ComponentRef Id="_locales_hi.pak_62162f14_e737_4775_83dd_36b7e5b1413c" />
+        <ComponentRef Id="_locales_hr.pak_5763337e_0c6f_4b58_b00c_f28fd327184a" />
+        <ComponentRef Id="_locales_hu.pak_133ce4f1_2a7a_4344_b8bb_32d0929ddc3c" />
+        <ComponentRef Id="_locales_id.pak_ff9f9956_a56f_44b2_95cd_1b5d04f0c355" />
+        <ComponentRef Id="_locales_it.pak_bd8ac6dc_f837_471a_83fc_6b76641cbbda" />
+        <ComponentRef Id="_locales_ja.pak_9e1fe337_4e1a_4d3c_a54e_8caedee812f4" />
+        <ComponentRef Id="_locales_kn.pak_2db8730b_c8b6_4964_bf6d_89391ba66627" />
+        <ComponentRef Id="_locales_ko.pak_0b6942de_ce93_4f05_b818_acaf3bae0776" />
+        <ComponentRef Id="_locales_lt.pak_2d3835ae_b3eb_4c79_b55b_5f768c73dab8" />
+        <ComponentRef Id="_locales_lv.pak_d05e748a_61d1_479a_8b6c_f2ddd7c55728" />
+        <ComponentRef Id="_locales_ml.pak_5318876c_2a0c_433a_a1f2_f11f3d482e2e" />
+        <ComponentRef Id="_locales_mr.pak_b2e9487c_fac9_4a89_a138_05420bf0f286" />
+        <ComponentRef Id="_locales_ms.pak_23c10039_9881_472a_95ec_1c5a426dbb8a" />
+        <ComponentRef Id="_locales_nb.pak_8d0a4a01_0d12_4e4f_8d59_6360961e698f" />
+        <ComponentRef Id="_locales_nl.pak_b6961598_0a1e_4adf_9f82_d6a003b58700" />
+        <ComponentRef Id="_locales_pl.pak_1d032a50_0b46_440f_bf87_039dfcec2c7c" />
+        <ComponentRef Id="_locales_pt_BR.pak_0848fcb7_fef0_448a_a834_7c5844eccbd0" />
+        <ComponentRef Id="_locales_pt_PT.pak_52c7666c_293a_4eca_85d9_358727319a8e" />
+        <ComponentRef Id="_locales_ro.pak_f31ec606_eb0e_44ef_a06b_4c8c52ddbcd4" />
+        <ComponentRef Id="_locales_ru.pak_8f2ec96b_589d_4e08_8fac_3217de28a7e7" />
+        <ComponentRef Id="_locales_sk.pak_034fa005_b590_4e4b_9952_2060c71f7e00" />
+        <ComponentRef Id="_locales_sl.pak_eb7a1a55_8854_4ff2_97ca_b178a3c69695" />
+        <ComponentRef Id="_locales_sr.pak_2fa2ecb7_56bf_465c_a53f_e2475d7958f3" />
+        <ComponentRef Id="_locales_sv.pak_9bc6375b_b8f7_4535_bb1b_25c7ca12601c" />
+        <ComponentRef Id="_locales_sw.pak_a817dff3_8788_4c69_98e6_6dc538106ed3" />
+        <ComponentRef Id="_locales_ta.pak_a1844de2_47f5_445b_ad6d_85ff892c3ed6" />
+        <ComponentRef Id="_locales_te.pak_d35ac1db_4c5c_4a4e_ad47_8c6a23482bf7" />
+        <ComponentRef Id="_locales_th.pak_e22d16c1_dd78_4376_9318_6a98522a5e59" />
+        <ComponentRef Id="_locales_tr.pak_74838196_63f7_4752_994d_9cc26b0dff47" />
+        <ComponentRef Id="_locales_uk.pak_f4ceb9b8_6811_454b_a10a_d1cf88b9d429" />
+        <ComponentRef Id="_locales_vi.pak_790879a1_f104_45ea_87f5_232a97399fa3" />
+        <ComponentRef Id="_locales_zh_CN.pak_4d5e50f3_7258_4ce8_81d9_5572de705214" />
+        <ComponentRef Id="_locales_zh_TW.pak_cc99935f_e9a8_4285_b88d_fda666e3206f" />
+        <ComponentRef Id="_buildApp.yml_3da77b1e_926c_4df7_bcd7_75c8a40b01f8" />
+        <ComponentRef Id="_axios.js_75fc52f4_4141_424f_9aed_e07ad6752986" />
+        <ComponentRef Id="_axios.map_2ddffeb3_4786_40e0_b2d7_7c5300880104" />
+        <ComponentRef Id="_axios.min.js_073c88b7_d0e2_4089_bc4d_da20b2d53c52" />
+        <ComponentRef Id="_axios.min.map_92a980da_aa3f_4bc1_8d31_ce09c3dd78fe" />
+        <ComponentRef Id="_README.md_e1e097d3_4b87_436a_a111_d22db7ea7e78" />
+        <ComponentRef Id="_http.js_2a7534bc_58aa_41ee_978c_e470295a1831" />
+        <ComponentRef Id="_xhr.js_b6dc3056_c17a_45ac_9b98_5d86ba3d2582" />
+        <ComponentRef Id="_Cancel.js_e2d1605d_d96e_4c6d_ae7b_a7d533859378" />
+        <ComponentRef Id="_CancelToken.js_8c2fa13c_3c93_4a2f_adda_16e694421a52" />
+        <ComponentRef Id="_isCancel.js_1221e43a_5449_4301_a28f_edf413b1414d" />
+        <ComponentRef Id="_Axios.js_719dc0c5_c963_4280_9136_390e043905d0" />
+        <ComponentRef Id="_InterceptorManager.js_de5e0139_ac99_4ff0_ae4b_1deffd6744cb" />
+        <ComponentRef Id="_README.md_4dcbbb27_0243_4eec_8b1d_227c0663f475" />
+        <ComponentRef Id="_buildFullPath.js_2acaea20_88c4_432e_98ea_7fc4f82e7a10" />
+        <ComponentRef Id="_createError.js_9f7d9061_7ce5_4582_bf63_b10892078907" />
+        <ComponentRef Id="_dispatchRequest.js_f0a8ed0a_b9fd_4bca_9347_6659895fd5eb" />
+        <ComponentRef Id="_enhanceError.js_f9d43242_1149_4204_a011_5178ed447181" />
+        <ComponentRef Id="_mergeConfig.js_8ee7bcc2_2b53_4219_b6f3_58034ea9d8fe" />
+        <ComponentRef Id="_settle.js_a1fe0d22_36ef_4c53_a60c_0407fa40f463" />
+        <ComponentRef Id="_transformData.js_bde36920_8989_473a_a23b_caac1333e8c7" />
+        <ComponentRef Id="_README.md_93d6a3ec_e0e9_4ed1_bac5_9eb3a19867f9" />
+        <ComponentRef Id="_bind.js_4030398a_d901_4acd_bf1b_6059135f8834" />
+        <ComponentRef Id="_buildURL.js_ac2d163b_449b_455d_906e_6dfc54819253" />
+        <ComponentRef Id="_combineURLs.js_c601dd76_14ca_4e1e_babe_6f0fcf1408c5" />
+        <ComponentRef Id="_cookies.js_07905b88_e7af_41d9_a5ee_6a99fd7f0dc8" />
+        <ComponentRef Id="_deprecatedMethod.js_d87aa244_014e_4a67_a4d6_ad799b880489" />
+        <ComponentRef Id="_isAbsoluteURL.js_a870573e_165d_4944_a777_1657d5e1bae9" />
+        <ComponentRef Id="_isAxiosError.js_fda277e8_54e0_4a31_86d3_59cd9070a3a7" />
+        <ComponentRef Id="_isURLSameOrigin.js_37f64795_605b_4345_8f75_9ac0a4650c57" />
+        <ComponentRef Id="_normalizeHeaderName.js_affd5084_d358_4614_878d_2b003a5652dc" />
+        <ComponentRef Id="_parseHeaders.js_ff5599f1_23c0_4cdf_8284_d885bc13f6d9" />
+        <ComponentRef Id="_spread.js_4e2de013_6fb2_41b2_9101_176b510b718a" />
+        <ComponentRef Id="_axios.js_4e0a1068_3c8a_4409_b2cc_46216874b766" />
+        <ComponentRef Id="_defaults.js_2756c467_d6fc_4652_9a0d_5289c6ca7a05" />
+        <ComponentRef Id="_utils.js_f9537a7a_89e9_4c74_ad1e_2cb399505620" />
+        <ComponentRef Id="_CHANGELOG.md_8dcba1a7_641f_4aae_a45e_e6be012d465f" />
+        <ComponentRef Id="_LICENSE_7abdc170_6529_4177_b7e8_f17fb2030485" />
+        <ComponentRef Id="_README.md_2a46de26_1e8b_4fe4_b28c_8ca02aa3a5b9" />
+        <ComponentRef Id="_UPGRADE_GUIDE.md_954ec6e2_d3ee_4c61_ac01_c09d42bfcc50" />
+        <ComponentRef Id="_index.d.ts_518e63fd_d4c3_4bdc_8651_746154ebb18d" />
+        <ComponentRef Id="_index.js_695c23ab_7f0c_48d0_b304_d5ef51d3b368" />
+        <ComponentRef Id="_package.json_35fc9840_a51c_4e93_a508_3b4c30416027" />
+        <ComponentRef Id="_browser.js_f2997255_6d5c_439f_91d5_9503e641dcf8" />
+        <ComponentRef Id="_debug.js_2ba23fd9_5b5a_40d3_bf1f_e9528ec62ee5" />
+        <ComponentRef Id="_index.js_b9d4bcaa_7c26_49c7_ab8f_ce93e781cd1c" />
+        <ComponentRef Id="_inspector_log.js_9bf48061_bf07_462c_94b9_1df1c7a612f5" />
+        <ComponentRef Id="_node.js_3a7cd3e0_8e92_4a59_88e4_9160253b3960" />
+        <ComponentRef Id="_.coveralls.yml_da1b294a_821d_4cb4_8b85_0a0ceaa57dac" />
+        <ComponentRef Id="_.eslintrc_aebee709_0351_4ffa_814a_a7425e87a2a5" />
+        <ComponentRef Id="_.npmignore_4dfe1edd_09f8_48ee_9adb_6e76c98c3f16" />
+        <ComponentRef Id="_.travis.yml_8100e983_67f3_492c_924d_b34dc8a53b40" />
+        <ComponentRef Id="_CHANGELOG.md_57033caf_f97a_4dba_a2fb_bbe04920816d" />
+        <ComponentRef Id="_LICENSE_76d11ae3_f316_4182_9341_361c737363ce" />
+        <ComponentRef Id="_Makefile_0471b1ff_4f76_482b_b590_85cda5a2b210" />
+        <ComponentRef Id="_README.md_77176094_3cb3_4e4d_8464_822032b5676b" />
+        <ComponentRef Id="_component.json_7bd55d24_e00c_49b9_8cfb_136dc4038869" />
+        <ComponentRef Id="_karma.conf.js_83095f69_b23a_4292_8f3d_13bec0190408" />
+        <ComponentRef Id="_node.js_35fbadc2_db78_4184_bb71_3c687d156431" />
+        <ComponentRef Id="_package.json_9dc86c47_e84d_41d1_a469_0dd662361d1f" />
+        <ComponentRef Id="_index.js_0db4e792_4c00_49d2_bfe5_52a3199ae01d" />
+        <ComponentRef Id="_license_acfbf79d_9686_4e2a_a148_844ee2919621" />
+        <ComponentRef Id="_package.json_49f5ac24_0cdb_4c75_9125_bb0019e01c0c" />
+        <ComponentRef Id="_readme.md_7f24cf64_7b51_4383_897b_6620d495d025" />
+        <ComponentRef Id="_index.test.js_ce399cad_35b5_4e11_bb4c_bfe0cd2ed510" />
+        <ComponentRef Id="_mocha.opts_1eac59cf_ef0e_4dc5_8dc3_413e1b152cc7" />
+        <ComponentRef Id="_.eslintrc_690ae4f2_4710_4972_ba3c_e5db63cf71d5" />
+        <ComponentRef Id="_.jsfmtrc_7c5f0833_8bbb_4698_9a1b_2be2c0178b93" />
+        <ComponentRef Id="_.npmignore_18e49a3d_c9ee_472b_9d47_fb8090e5e7c6" />
+        <ComponentRef Id="_.travis.yml_b2c07132_8540_40f7_9a45_f755463f23f2" />
+        <ComponentRef Id="_LICENSE_ba65d9a8_e11d_4f90_9fb8_4e96dd6bb144" />
+        <ComponentRef Id="_README.md_fd22f356_51c1_4025_965e_72e8f833d230" />
+        <ComponentRef Id="_appveyor.yml_94cd5b07_a9e5_4c1d_a7df_b4cd5ac5dae3" />
+        <ComponentRef Id="_index.js_bb23fef2_9440_4ee0_92c9_42e3bc6be498" />
+        <ComponentRef Id="_package.json_f8b8f337_2c3b_47ab_8a7b_e67d971f1336" />
+        <ComponentRef Id="_node.lib_bb241705_ecc1_4d58_8ba1_8af1091f75fb" />
+        <ComponentRef Id="_node.lib_61164264_5394_4b9a_8034_98c16ca21a40" />
+        <ComponentRef Id="_api_constants.h_7569eec4_4727_4110_86b3_5c769fa4de8c" />
+        <ComponentRef Id="_atomic_entry_flag.h_29f73cca_22b0_4694_822e_1b89fa0e84ba" />
+        <ComponentRef Id="_caged_heap_local_data.h_4be65be6_8454_4c5d_94fb_d8c843e19a54" />
+        <ComponentRef Id="_compiler_specific.h_65d9ac13_2da1_4302_8bb8_05a018192704" />
+        <ComponentRef Id="_finalizer_trait.h_c8d8b09f_cc08_4779_9262_5e98095e5493" />
+        <ComponentRef Id="_gc_info.h_1fc85e47_f015_43a4_8674_6c20b3f2977a" />
+        <ComponentRef Id="_logging.h_12a6622a_5f0f_4403_b605_b1c0c7161fe0" />
+        <ComponentRef Id="_persistent_node.h_68fed289_48fa_49af_b51c_851baff5cb9d" />
+        <ComponentRef Id="_pointer_policies.h_97d44de0_81f8_489c_9b54_19fc90c988c9" />
+        <ComponentRef Id="_prefinalizer_handler.h_679b5378_fd98_480f_a776_cf72178bb747" />
+        <ComponentRef Id="_process_heap.h_8c8302f8_18d4_4f0e_b779_0a67488906f6" />
+        <ComponentRef Id="_write_barrier.h_a1af0ae1_f961_4765_b632_92286bcb32b2" />
+        <ComponentRef Id="_allocation.h_6563dd66_b5bc_4254_8a82_4a07ee8ad633" />
+        <ComponentRef Id="_common.h_6f6b6f6b_0c89_43ae_943f_733b8e80c49c" />
+        <ComponentRef Id="_custom_space.h_50dfdad9_b7cc_4614_919b_3021bfd718dd" />
+        <ComponentRef Id="_garbage_collected.h_a369c6a1_5d74_402e_8c35_cddf8e428b35" />
+        <ComponentRef Id="_heap.h_49cdea52_193a_40bf_aa36_35080e9de044" />
+        <ComponentRef Id="_liveness_broker.h_db017c96_8e01_4fe2_83a8_4726dc3b3e5b" />
+        <ComponentRef Id="_macros.h_2427a2f0_93ab_421e_89b4_1a33b1892921" />
+        <ComponentRef Id="_member.h_d3d50a04_08b9_41c9_9d7e_8f8d0d261534" />
+        <ComponentRef Id="_persistent.h_99c596e3_35dc_439b_947f_5cf5799f8459" />
+        <ComponentRef Id="_platform.h_67ab0eec_f934_4ff9_a33d_f064ab6bf526" />
+        <ComponentRef Id="_prefinalizer.h_96fc736e_9bd6_401b_99dc_e75c6a5356a7" />
+        <ComponentRef Id="_source_location.h_c96f43bc_fafe_473e_86a5_47dc7f1f47a6" />
+        <ComponentRef Id="_trace_trait.h_a2c23d3a_458a_4035_8e33_ef3d68617e08" />
+        <ComponentRef Id="_type_traits.h_24040e84_f405_42c2_9777_22e753e4e259" />
+        <ComponentRef Id="_visitor.h_776860c7_318a_41b4_80f5_db0eda2d751e" />
+        <ComponentRef Id="_libplatform_export.h_e4193112_a8ef_4ca3_b1f6_a5abf5d0cb4a" />
+        <ComponentRef Id="_libplatform.h_4996c381_dbf8_4ea6_93e9_16398a5497b5" />
+        <ComponentRef Id="_v8_tracing.h_45e68a85_c252_4e89_a4b2_4e717876ab95" />
+        <ComponentRef Id="_aix.h_4162464f_4007_4326_9110_19dd5538d469" />
+        <ComponentRef Id="_android_ifaddrs.h_ffaf2b7a_2da5_413d_b8ae_ecb33987c9c6" />
+        <ComponentRef Id="_bsd.h_44a68049_8881_49c1_857d_bb03715aa6d6" />
+        <ComponentRef Id="_darwin.h_3a48466d_0953_4837_b0f1_5412047478c6" />
+        <ComponentRef Id="_errno.h_ed2a11a0_f345_46eb_aefe_dd6bc36e3d9e" />
+        <ComponentRef Id="_linux.h_0058e88d_1de6_4930_bab2_f4f6d40ce917" />
+        <ComponentRef Id="_os390.h_a325c88a_d40e_4ded_92dc_722dd15bda35" />
+        <ComponentRef Id="_posix.h_6726ea4f_b817_4184_9a4d_392324ce0ad7" />
+        <ComponentRef Id="_stdint_msvc2008.h_5b4c81ce_7aed_43df_bc93_1bfdd0890916" />
+        <ComponentRef Id="_sunos.h_a18ec3fa_b435_41b6_8fac_c759fffca813" />
+        <ComponentRef Id="_threadpool.h_d7ccc0b8_0ee7_468b_9c6e_6a92f4f1deec" />
+        <ComponentRef Id="_tree.h_23d4d4ec_5241_478b_bced_6c1843ec8217" />
+        <ComponentRef Id="_unix.h_bcb52ccb_0079_42eb_9085_7c12af5e3c11" />
+        <ComponentRef Id="_version.h_5c95b21a_afb0_47cf_9ba7_e96dd97dab3f" />
+        <ComponentRef Id="_win.h_224e03ed_94c5_4592_805a_1855b5af6b3f" />
+        <ComponentRef Id="_common.gypi_d2c28b03_40b8_49d6_99e7_a5d609eb9f66" />
+        <ComponentRef Id="_config.gypi_d8e12a07_ec7b_4e5d_bca9_389512595a3f" />
+        <ComponentRef Id="_js_native_api.h_423ff5b2_e5eb_44c8_96a7_409f6fc43c79" />
+        <ComponentRef Id="_js_native_api_types.h_a49773ab_5d50_4f89_b8e1_73348ff56017" />
+        <ComponentRef Id="_node.h_b152c90d_b435_4f91_88fa_8e4a15d05d2e" />
+        <ComponentRef Id="_node_api.h_c877edb6_2d80_457e_b40c_9d3f1c92161e" />
+        <ComponentRef Id="_node_api_types.h_963646db_ddbe_407c_a11a_41743e2d0d16" />
+        <ComponentRef Id="_node_buffer.h_edd0f6cd_1a19_4e8a_b9a7_2fba6f53740b" />
+        <ComponentRef Id="_node_object_wrap.h_982ff0c9_3d79_4fa2_85d0_0897cdb58cd0" />
+        <ComponentRef Id="_node_version.h_5c0a4285_f6da_48b6_b6ec_1829a711d4dd" />
+        <ComponentRef Id="_uv.h_028a85a2_a2a6_4a92_835d_b79adbf2b113" />
+        <ComponentRef Id="_v8_cppgc.h_1af1c4d4_46e1_434b_9ca5_405425b509cd" />
+        <ComponentRef Id="_v8_fast_api_calls.h_2808f14b_535c_44d6_9751_da9a1a124158" />
+        <ComponentRef Id="_v8_internal.h_61901d27_02ae_49d9_9e51_95d50f18c3fe" />
+        <ComponentRef Id="_v8_platform.h_abcf5c06_ab37_45b4_b554_8e529e483274" />
+        <ComponentRef Id="_v8_profiler.h_e95fb9b2_4202_4bc5_b912_c49e748d4b4b" />
+        <ComponentRef Id="_v8_util.h_f1a936cd_c1b9_4ca2_aba0_2eb879a8f6b7" />
+        <ComponentRef Id="_v8_value_serializer_version.h_dd297476_2ff0_4319_a9ac_d035ddd8c024" />
+        <ComponentRef Id="_v8_version_string.h_b2b29cac_231a_4cb7_984b_5facf6da0e0c" />
+        <ComponentRef Id="_v8_version.h_2a40985c_c7fa_4f7e_b346_0631a8861c15" />
+        <ComponentRef Id="_v8_wasm_trap_handler_posix.h_18e58096_5310_4204_91d8_deb9ab5ef5f7" />
+        <ComponentRef Id="_v8_wasm_trap_handler_win.h_3a707252_bfd2_4113_9a99_15c27fb294bc" />
+        <ComponentRef Id="_v8.h_765dc18d_7a3c_47d4_8d15_7b49b0e37a69" />
+        <ComponentRef Id="_v8config.h_0d6182be_bb11_4757_9a11_2e8bbd6ecd95" />
+        <ComponentRef Id="_zconf.h_ac9ed93d_9f68_4b23_99d1_ed80a786c78f" />
+        <ComponentRef Id="_zlib.h_9735e07c_da08_4b36_b658_1d897d8f1f38" />
+        <ComponentRef Id="_node.lib_1f382fa9_f136_4126_87c5_e54f70e306d3" />
+        <ComponentRef Id="_installVersion_47dcb471_8816_4bc8_9948_d3437a0af50b" />
+        <ComponentRef Id="_exe_icon_extractor.node_8ee37973_79de_4dfb_8bbd_c4b80e14d1fa" />
+        <ComponentRef Id="_CL.command.1.tlog_88f7eae7_a6cc_4556_9b94_ed985ebb6d85" />
+        <ComponentRef Id="_CL.read.1.tlog_205b3d23_b1bc_46bd_a766_15b72012fb09" />
+        <ComponentRef Id="_CL.write.1.tlog_db5d5d5b_00ed_49e8_a768_1f2c5463e966" />
+        <ComponentRef Id="_link.command.1.tlog_d8307135_57b4_4323_984f_4713e4d896c0" />
+        <ComponentRef Id="_link.read.1.tlog_f30d3ebd_dfaf_4ffd_9c33_78f8c89cf460" />
+        <ComponentRef Id="_link.write.1.tlog_01bb0d54_905f_47d8_97a1_1c9e7373f8bb" />
+        <ComponentRef Id="_module.lastbuildstate_8d4d2341_3d78_4d00_a250_8c0ac9192ffd" />
+        <ComponentRef Id="_module.write.1u.tlog_d7e41995_3548_447a_859a_a729db3a11c6" />
+        <ComponentRef Id="_module.obj_b592bacc_7822_4304_9f4d_045f755fde19" />
+        <ComponentRef Id="_module.node.recipe_28dfb2fc_8d93_4d40_908d_db4fe643f261" />
+        <ComponentRef Id="_win_delay_load_hook.obj_e556e041_28fd_468d_8e0a_d1fe7b7888be" />
+        <ComponentRef Id="_.forge_meta_40cf4983_f877_4796_b3d4_07a1e3c46a9a" />
+        <ComponentRef Id="_module.exp_ad136750_a822_45db_ba9f_6b2c8c3b1f38" />
+        <ComponentRef Id="_module.iobj_5edbfb3e_cd75_4514_919c_51fa9a154e76" />
+        <ComponentRef Id="_module.ipdb_ca530101_8d0e_43f2_b3b2_0b40a5d9d957" />
+        <ComponentRef Id="_module.lib_b168b854_c9cb_4c57_b381_ba525e84f56a" />
+        <ComponentRef Id="_module.node_f7614d8f_20fc_4dcf_bf8d_3a7baaee2ac9" />
+        <ComponentRef Id="_module.pdb_33a24f14_4b3f_46ec_a8bc_74be0bb85e62" />
+        <ComponentRef Id="_binding.sln_29b2abec_c8e0_4a96_869a_9c11534ec68b" />
+        <ComponentRef Id="_config.gypi_ed030c7a_fce0_496b_bbf4_6b85ce7306bf" />
+        <ComponentRef Id="_module.vcxproj_4cdcd191_2c89_4948_8bff_d912e9182a1f" />
+        <ComponentRef Id="_module.vcxproj.filters_4cb40000_c036_4777_b58f_25ec25a6abb8" />
+        <ComponentRef Id="_module.cc_3f774add_677b_4cbf_ab86_6b83b52f6029" />
+        <ComponentRef Id="_README.md_ed26c334_ae98_4706_b474_a9b3e7d1b15a" />
+        <ComponentRef Id="_binding.gyp_2cebf89f_d920_45d4_b3dc_da5d863c7faf" />
+        <ComponentRef Id="_bindings.js_837a2502_e0f1_4e79_8119_26bba7e503d2" />
+        <ComponentRef Id="_package.json_39b42769_3b7c_4f2d_88b6_b949faaedb41" />
+        <ComponentRef Id="_test.js_c7e9be34_6e3f_406d_ab6f_da2bd72c474e" />
+        <ComponentRef Id="_LICENSE_fbf4657f_c030_43b2_ac48_e5e1844bdc2a" />
+        <ComponentRef Id="_README.md_1b349999_fea0_4f4e_88fe_ee364c6204cf" />
+        <ComponentRef Id="_debug.js_f9dc9edd_6a83_4861_8111_8a9fc7b3754c" />
+        <ComponentRef Id="_http.js_477291ab_d890_4446_8bb0_474a861bd913" />
+        <ComponentRef Id="_https.js_0a9746d2_37c9_4d5b_90cc_858b958183eb" />
+        <ComponentRef Id="_index.js_f253c876_c777_4fae_9bc7_797786e5937e" />
+        <ComponentRef Id="_package.json_bca8bcbd_2596_4061_ab3e_272a3550d68e" />
+        <ComponentRef Id="_commonjs.js_b9204d27_d93c_40d4_8104_2e49a3a7ecdc" />
+        <ComponentRef Id="_gh.js_4697e8ba_e397_4ce4_85d0_babd4c06e5b5" />
+        <ComponentRef Id="_index.html_f32283c5_52fb_409c_8ce8_94cbe206ef9b" />
+        <ComponentRef Id="_index.js_cb97cfa7_b4ed_4bdf_8a26_591c53d07131" />
+        <ComponentRef Id="_mocha.opts_8964bfb2_e09a_42c9_be52_a004155170cf" />
+        <ComponentRef Id="_.travis.yml_4a691c44_d389_42c0_9475_f6b62e809627" />
+        <ComponentRef Id="_README.md_4df23466_8259_47df_9f9a_00dc7c6900e2" />
+        <ComponentRef Id="_bower.json_78889009_5af2_4113_907e_3783b670332c" />
+        <ComponentRef Id="_index.js_45d0005a_4594_4aa5_9103_4664f382e70b" />
+        <ComponentRef Id="_package.json_278cbd75_7196_470c_a6d3_0efa4bff7ea2" />
+        <ComponentRef Id="_index.js_4386c78d_c8ce_4d86_a98a_521081c11655" />
+        <ComponentRef Id="_.travis.yml_4ee4b35c_67ff_4324_933f_2299ea89563c" />
+        <ComponentRef Id="_History.md_4c8052a0_0dec_48cb_802a_57dcabd996f7" />
+        <ComponentRef Id="_LICENSE_MIT_66457d7d_82ef_438a_9433_9e4af480011e" />
+        <ComponentRef Id="_Readme.md_6e495c98_0723_43f3_8065_3530cad15f9d" />
+        <ComponentRef Id="_index.js_761f92ac_614f_4253_a8fd_c6cf9e097ebe" />
+        <ComponentRef Id="_package.json_b9d0ad40_b141_433f_9670_b3d062af77d2" />
+        <ComponentRef Id="_index.js_35351317_d53d_4417_9225_654e9192e929" />
+        <ComponentRef Id="_license.md_2b2a3e34_2d97_45ee_b6cd_c22c346e0daf" />
+        <ComponentRef Id="_package.json_c01df240_1a10_4032_b073_fb6cad0cb7ea" />
+        <ComponentRef Id="_readme.md_b1d3ff65_a53d_4b21_99c3_487ae8e4c15a" />
+        <ComponentRef Id="_LICENSE_MIT.txt_24009d25_88aa_4a69_9178_88f9a576cf32" />
+        <ComponentRef Id="_README.md_8e9f3f31_5216_4658_a7c5_f833fe07785b" />
+        <ComponentRef Id="_package.json_ad0de878_51dd_4140_86d0_94833fe6e5c3" />
+        <ComponentRef Id="_punycode.es6.js_3959f6f2_f1c5_4db5_8e4c_a2336dc81954" />
+        <ComponentRef Id="_punycode.js_438e7ed6_eb93_44cb_8136_de4790308cc2" />
+        <ComponentRef Id="_config.yml_f8786cb9_88db_48ee_934d_87cfa0ea31be" />
+        <ComponentRef Id="_index.js_2a45712e_a225_4d42_84b2_113406c1e2f3" />
+        <ComponentRef Id="_license.md_d4ece602_8a21_439e_aa1a_d584a00973c5" />
+        <ComponentRef Id="_package.json_5a02be63_17cb_49c0_8887_18e8c8977d61" />
+        <ComponentRef Id="_readme.md_546325d0_1d79_483e_bb67_c6d09e074026" />
+        <ComponentRef Id="_index.test_d.ts_367b2f86_40f0_4186_b678_1edcfab01dc8" />
+        <ComponentRef Id="_index.test.js_f80524c0_95f0_4d66_ab33_081798935b12" />
+        <ComponentRef Id="_.releaserc.json_b778e0d7_35a6_43fe_9b8a_5114233fe889" />
+        <ComponentRef Id="_LICENSE_9136dd64_dcb9_4c6a_8224_4efec20ef02e" />
+        <ComponentRef Id="_index.d.ts_b7e90bd0_96ef_4484_a6bf_233261455b92" />
+        <ComponentRef Id="_index.js_ff7a64d3_defb_4ef9_8be2_7c8b0eaeb89d" />
+        <ComponentRef Id="_package.json_caa3e1a4_952e_432f_bb17_ae95df884b25" />
+        <ComponentRef Id="_readme.md_404f49c5_e02f_411c_bcf1_663e9543cf61" />
+        <ComponentRef Id="_screenshot.png_9317566f_1d18_484b_a4bb_ff316e6c7f33" />
+        <ComponentRef Id="_resources_app_.gitignore_349b74e7_334c_456a_aef1_c70aac706126" />
+        <ComponentRef Id="_resources_app_LICENSE.md_4aa697ff_400a_4d19_a972_f843c452d948" />
+        <ComponentRef Id="_resources_app_README.md_b054c62b_794a_4097_9229_1075c987619e" />
+        <ComponentRef Id="_resources_app_forge.config.js_098d52b3_b3e6_4327_8181_382d46c2b87d" />
+        <ComponentRef Id="_resources_app_index.html_2db32db7_1637_4834_8628_7f575ab7b503" />
+        <ComponentRef Id="_resources_app_installation.md_afa8457f_0c5b_4337_b811_e2c7a8f7d964" />
+        <ComponentRef Id="_resources_app_logo.icns_21bbca19_384e_4418_9076_bb4173430745" />
+        <ComponentRef Id="_resources_app_logo.ico_a4c2fba3_1741_4684_a6a8_e999311e8ea5" />
+        <ComponentRef Id="_resources_app_logo.png_ef01cd4d_b1cf_4cdc_957c_3944a495edd7" />
+        <ComponentRef Id="_resources_app_macos_blocked.png_0151ab43_1190_4175_9dcb_a187198f3936" />
+        <ComponentRef Id="_resources_app_macos_open_1.png_5e95e6af_f6de_4b9a_be0c_6bc5c2706c97" />
+        <ComponentRef Id="_resources_app_macos_open_2.png_e086e6e1_9326_42c1_92bf_fe7855c1efeb" />
+        <ComponentRef Id="_resources_app_main.js_a61a9139_7bd6_4dbd_89e6_82e7d00a7d39" />
+        <ComponentRef Id="_resources_app_package.json_261d95f6_041a_42cd_8563_f27323ec5638" />
+        <ComponentRef Id="_resources_app_preload.js_48ab6fe0_9243_4126_8079_168ad071c99d" />
+        <ComponentRef Id="_resources_app_style.css_aec0124b_1b40_48fd_8cff_41c7fcc72e95" />
+        <ComponentRef Id="_swiftshader_libEGL.dll_250b3c3c_fcd0_4da2_b27f_3ae398dae858" />
+        <ComponentRef Id="_swiftshader_libGLESv2.dll_a5e46781_ed0a_4457_bd4e_ff37a402c4a7" />
+        <ComponentRef Id="_LICENSE_d9bbcb63_08c7_435f_a08f_f971d86edc2b" />
+        <ComponentRef Id="_LICENSES.chromium.html_90060c8d_c1f7_44ad_97cc_b8f73fea7c69" />
+        <ComponentRef Id="_chrome_100_percent.pak_498b202f_d1cd_4705_9fbd_ddf3436faa8e" />
+        <ComponentRef Id="_chrome_200_percent.pak_3ced949b_8ec9_47c5_8e4b_7376f14ede80" />
+        <ComponentRef Id="_d3dcompiler_47.dll_d6e931d2_d57b_4ad2_bdeb_ee8fb20cdc6e" />
+        <ComponentRef Id="_dns_resolver.exe_e5db5015_b00a_4881_80ec_bee8ea406696" />
+        <ComponentRef Id="_ffmpeg.dll_82fee501_dd97_41ca_941e_fe859a400984" />
+        <ComponentRef Id="_icudtl.dat_fab0fc57_999a_4690_9b73_2306e5b87392" />
+        <ComponentRef Id="_libEGL.dll_9cba77d6_667a_4fdc_9ad8_6fded7dcfd9b" />
+        <ComponentRef Id="_libGLESv2.dll_1e173372_a1a6_4628_9552_4d69eebbc21b" />
+        <ComponentRef Id="_resources.pak_2139ead4_a77f_4527_bed5_0dbd937b4fac" />
+        <ComponentRef Id="_snapshot_blob.bin_ee9702e9_ff2c_43d7_bba0_674995f02baf" />
+        <ComponentRef Id="_v8_context_snapshot.bin_525e7077_76eb_46eb_a4fe_7438c595d0d8" />
+        <ComponentRef Id="_version_43a10d88_51b8_4030_87cb_129b178c3122" />
+        <ComponentRef Id="_vk_swiftshader.dll_9711b9ff_6946_493c_8589_71b3644ebaa7" />
+        <ComponentRef Id="_vk_swiftshader_icd.json_5ea2be44_e2fb_4768_b2ad_aebf2d34e5f5" />
+        <ComponentRef Id="_vulkan_1.dll_ae33bad2_7808_4f19_ab20_29d694c78150" />
+        <ComponentRef Id="_dns_resolver.exe_26e3fe56_3077_4916_b7d9_73eea123dc46" />
+        <ComponentRef Id="_.installInfo.json_fe5ce30b_9309_4a3d_86ed_191bd3f07180" />
+        <ComponentRef Id="RegistryInstallPath" />
+        <ComponentRef Id="UninstallDisplayName" />
+        <ComponentRef Id="UninstallPublisher" />
+        <ComponentRef Id="UninstallDisplayVersion" />
+        <ComponentRef Id="UninstallModifyString" />
+        <ComponentRef Id="UninstallString" />
+        <ComponentRef Id="UninstallDisplayIcon" />
+        <ComponentRef Id="ApplicationShortcut" />
+        <ComponentRef Id="DesktopShortcut" />
+        <ComponentRef Id="PurgeOnUninstall" />
+      </Feature> 
+    </Feature> 
+  </Product>
+</Wix>
